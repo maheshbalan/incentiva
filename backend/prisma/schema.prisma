@@ -1,0 +1,161 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String?
+  firstName     String?
+  lastName      String?
+  role          UserRole @default(PARTICIPANT)
+  oauthProvider String?
+  oauthId       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  campaigns     UserCampaign[]
+  redemptions   CampaignRedemption[]
+  createdCampaigns Campaign[] @relation("CampaignCreator")
+
+  @@map("users")
+}
+
+model Campaign {
+  id                      String   @id @default(cuid())
+  name                    String
+  description             String?
+  startDate               DateTime
+  endDate                 DateTime
+  status                  CampaignStatus @default(DRAFT)
+  tlpApiKey               String?
+  tlpEndpointUrl          String?
+  backendConnectionConfig  Json?
+  createdById             String
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  createdBy               User     @relation("CampaignCreator", fields: [createdById], references: [id])
+  rules                   CampaignRule[]
+  executions              CampaignExecution[]
+  schemas                 CampaignSchema[]
+  userCampaigns           UserCampaign[]
+  redemptions             CampaignRedemption[]
+
+  @@map("campaigns")
+}
+
+model CampaignRule {
+  id                      String   @id @default(cuid())
+  campaignId              String
+  ruleType                RuleType
+  ruleDefinition          Json
+  generatedCode           String?
+  schemaUnderstandingScore Decimal? @db.Decimal(3, 2)
+  schemaFeedback          String?
+  createdAt               DateTime @default(now())
+
+  // Relations
+  campaign                Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("campaign_rules")
+}
+
+model CampaignExecution {
+  id              String   @id @default(cuid())
+  campaignId      String
+  salespersonId   String?
+  regionId        String?
+  pointsAllocated Int      @default(0)
+  goalAchieved    Boolean  @default(false)
+  executionDate   DateTime @default(now())
+
+  // Relations
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("campaign_executions")
+}
+
+model CampaignSchema {
+  id                String   @id @default(cuid())
+  campaignId        String
+  schemaDefinition  Json
+  understandingScore Decimal? @db.Decimal(3, 2)
+  feedbackText      String?
+  uploadedAt        DateTime @default(now())
+
+  // Relations
+  campaign          Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("campaign_schemas")
+}
+
+model UserCampaign {
+  id              String   @id @default(cuid())
+  userId          String
+  campaignId      String
+  participantId   String? // TLP member ID
+  currentPoints   Int      @default(0)
+  goalProgress    Decimal  @default(0) @db.Decimal(5, 2) // Percentage
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, campaignId])
+  @@map("user_campaigns")
+}
+
+model CampaignRedemption {
+  id              String   @id @default(cuid())
+  campaignId      String
+  userId          String
+  offerId         String // TLP offer ID
+  pointsRedeemed  Int
+  redemptionDate  DateTime @default(now())
+  status          RedemptionStatus @default(PENDING)
+
+  // Relations
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("campaign_redemptions")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  PARTICIPANT
+}
+
+enum CampaignStatus {
+  DRAFT
+  APPROVED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum RuleType {
+  GOAL
+  ELIGIBILITY
+  PRIZE
+}
+
+enum RedemptionStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+} 
