@@ -4,25 +4,39 @@ import passport from 'passport';
 import { prisma } from '../index';
 import { UserRole } from '@incentiva/shared';
 import { createError } from './errorHandler';
-import { User as PrismaUser } from '@prisma/client';
+
+// Define a User interface that matches our Prisma schema
+interface PrismaUser {
+  id: string;
+  email: string;
+  passwordHash: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  role: UserRole;
+  oauthProvider: string | null;
+  oauthId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export interface AuthenticatedRequest extends Request {
   user?: PrismaUser;
 }
 
 export const authenticateJWT = async (
-  req: AuthenticatedRequest,
+  req: Request,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Access token required'
       });
+      return;
     }
 
     const token = authHeader.substring(7);
@@ -33,37 +47,44 @@ export const authenticateJWT = async (
     });
 
     if (!user) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'User not found'
       });
+      return;
     }
 
-    req.user = user;
+    // Type assertion to add user to request
+    (req as AuthenticatedRequest).user = user;
 
     next();
   } catch (error) {
-    return res.status(401).json({
+    res.status(401).json({
       success: false,
       error: 'Invalid token'
     });
+    return;
   }
 };
 
 export const requireRole = (roles: UserRole[]) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return res.status(401).json({
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const authReq = req as AuthenticatedRequest;
+    
+    if (!authReq.user) {
+      res.status(401).json({
         success: false,
         error: 'Authentication required'
       });
+      return;
     }
 
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
+    if (!roles.includes(authReq.user.role)) {
+      res.status(403).json({
         success: false,
         error: 'Insufficient permissions'
       });
+      return;
     }
 
     next();
@@ -84,33 +105,36 @@ export const authenticateMicrosoft = passport.authenticate('microsoft', {
 });
 
 export const handleOAuthCallback = (provider: string) => {
-  return passport.authenticate(provider, { session: false }, (err: any, user: any) => {
-    if (err || !user) {
-      return res.status(401).json({
-        success: false,
-        error: 'OAuth authentication failed'
-      });
-    }
-    
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: user.id },
-      process.env.JWT_SECRET!,
-      { expiresIn: '24h' }
-    );
-
-    res.json({
-      success: true,
-      data: {
-        token,
-        user: {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-          firstName: user.firstName,
-          lastName: user.lastName
-        }
+  return (req: Request, res: Response, next: NextFunction) => {
+    passport.authenticate(provider, { session: false }, (err: any, user: any) => {
+      if (err || !user) {
+        res.status(401).json({
+          success: false,
+          error: 'OAuth authentication failed'
+        });
+        return;
       }
-    });
-  });
+      
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user.id },
+        process.env.JWT_SECRET!,
+        { expiresIn: '24h' }
+      );
+
+      res.json({
+        success: true,
+        data: {
+          token,
+          user: {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            firstName: user.firstName,
+            lastName: user.lastName
+          }
+        }
+      });
+    })(req, res, next);
+  };
 }; 
