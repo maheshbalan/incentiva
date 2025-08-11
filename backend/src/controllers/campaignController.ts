@@ -333,7 +333,7 @@ router.post('/:id/rules', authenticateJWT, requireAdmin, async (req: Authenticat
     const rules = await aiService.generateRules(requirements, {
       tables: [],
       relationships: [],
-      understandingScore: latestSchema.understandingScore || 0,
+      understandingScore: Number(latestSchema.understandingScore) || 0,
       feedback: latestSchema.feedbackText || '',
       requiredFields: []
     });
@@ -345,7 +345,7 @@ router.post('/:id/rules', authenticateJWT, requireAdmin, async (req: Authenticat
           data: {
             campaignId: id,
             ruleType: RuleType.GOAL,
-            ruleDefinition: goal,
+            ruleDefinition: JSON.stringify(goal),
             generatedCode: rules.generatedCode
           }
         })
@@ -358,7 +358,7 @@ router.post('/:id/rules', authenticateJWT, requireAdmin, async (req: Authenticat
           data: {
             campaignId: id,
             ruleType: RuleType.ELIGIBILITY,
-            ruleDefinition: eligibility
+            ruleDefinition: JSON.stringify(eligibility)
           }
         })
       )
@@ -370,7 +370,7 @@ router.post('/:id/rules', authenticateJWT, requireAdmin, async (req: Authenticat
           data: {
             campaignId: id,
             ruleType: RuleType.PRIZE,
-            ruleDefinition: prize
+            ruleDefinition: JSON.stringify(prize)
           }
         })
       )

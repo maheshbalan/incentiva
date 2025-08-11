@@ -372,7 +372,9 @@ export class TLPService {
       points: pointCost,
       pointType: pointTypeId,
       enabled: true,
-      imageUrl
+      online: true,
+      location: false,
+      imageUrl: imageUrl
     };
 
     return this.createOffer(offer);

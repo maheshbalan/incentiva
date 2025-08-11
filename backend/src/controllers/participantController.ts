@@ -324,7 +324,7 @@ router.post('/:campaignId/redeem', authenticateJWT, async (req: AuthenticatedReq
         userId: req.user.id,
         offerId,
         pointsRedeemed: points,
-        status: 'pending'
+        status: 'PENDING'
       }
     });
 

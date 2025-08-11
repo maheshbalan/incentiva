@@ -16,9 +16,10 @@
     "db:setup": "npm run db:generate && npm run db:push && npm run db:seed"
   },
   "dependencies": {
-    "@incentiva/shared": "file:../shared",
     "@anthropic-ai/sdk": "^0.9.1",
+    "@incentiva/shared": "file:../shared",
     "@prisma/client": "^5.7.1",
+    "axios": "^1.11.0",
     "bcryptjs": "^2.4.3",
     "bull": "^4.12.2",
     "cors": "^2.8.5",
@@ -31,14 +32,15 @@
     "multer": "^1.4.5-lts.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "passport-microsoft": "^1.0.0",
     "passport-jwt": "^4.0.1",
+    "passport-microsoft": "^1.0.0",
     "socket.io": "^4.7.4",
     "uuid": "^9.0.1",
     "winston": "^3.11.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/axios": "^0.14.4",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
@@ -61,4 +63,4 @@
     "ts-node": "^10.9.1",
     "typescript": "^5.3.3"
   }
-} 
+}

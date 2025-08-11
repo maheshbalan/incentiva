@@ -22,14 +22,14 @@ export class AIService {
     try {
       const prompt = this.buildSchemaAnalysisPrompt(schema);
       
-      const response = await this.client.messages.create({
+      const response = await this.client.completions.create({
+        prompt: `\n\nHuman: ${prompt}\n\nAssistant:`,
         model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 4096,
-        temperature: 0.1,
-        messages: [{ role: 'user', content: prompt }]
+        max_tokens_to_sample: 4096,
+        temperature: 0.1
       });
 
-      const analysis = this.parseSchemaAnalysis(response.content[0].text);
+      const analysis = this.parseSchemaAnalysis(response.completion);
       
       logger.info('Schema analysis completed', {
         understandingScore: analysis.understandingScore,
@@ -48,14 +48,14 @@ export class AIService {
     try {
       const prompt = this.buildRuleGenerationPrompt(requirements, schema);
       
-      const response = await this.client.messages.create({
+      const response = await this.client.completions.create({
+        prompt: `\n\nHuman: ${prompt}\n\nAssistant:`,
         model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 4096,
-        temperature: 0.2,
-        messages: [{ role: 'user', content: prompt }]
+        max_tokens_to_sample: 4096,
+        temperature: 0.2
       });
 
-      const rules = this.parseGeneratedRules(response.content[0].text);
+      const rules = this.parseGeneratedRules(response.completion);
       
       logger.info('Rules generation completed', {
         goalsCount: rules.goals.length,
@@ -75,14 +75,14 @@ export class AIService {
     try {
       const prompt = this.buildCodeGenerationPrompt(rules, schema);
       
-      const response = await this.client.messages.create({
+      const response = await this.client.completions.create({
+        prompt: `\n\nHuman: ${prompt}\n\nAssistant:`,
         model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 4096,
-        temperature: 0.1,
-        messages: [{ role: 'user', content: prompt }]
+        max_tokens_to_sample: 4096,
+        temperature: 0.1
       });
 
-      const code = this.parseGeneratedCode(response.content[0].text);
+      const code = this.parseGeneratedCode(response.completion);
       
       logger.info('Code generation completed', {
         hasTypeScript: !!code.typescript,
@@ -102,11 +102,11 @@ export class AIService {
     try {
       const prompt = this.buildGraphicsPrompt(description);
       
-      const response = await this.client.messages.create({
+      const response = await this.client.completions.create({
+        prompt: `\n\nHuman: ${prompt}\n\nAssistant:`,
         model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 1024,
-        temperature: 0.7,
-        messages: [{ role: 'user', content: prompt }]
+        max_tokens_to_sample: 1024,
+        temperature: 0.7
       });
 
       // For now, return a placeholder URL
