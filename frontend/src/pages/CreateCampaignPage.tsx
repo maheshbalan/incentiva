@@ -36,8 +36,8 @@ const CreateCampaignPage: React.FC = () => {
     defaultValues: {
       name: '',
       description: '',
-      startDate: '',
-      endDate: '',
+      startDate: new Date().toISOString().split('T')[0], // Use current date as default
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
       individualGoal: undefined,
       individualGoalCurrency: 'MXN',
       overallGoal: undefined,
@@ -46,10 +46,25 @@ const CreateCampaignPage: React.FC = () => {
       tlpApiKey: '',
       tlpEndpointUrl: ''
     },
-    mode: 'onChange'
+    mode: 'onBlur'
   })
 
   const watchedValues = watch()
+
+  // Custom validation function
+  const validateForm = (data: CampaignFormData): boolean => {
+    // Basic required fields
+    if (!data.name || !data.startDate || !data.endDate) {
+      return false
+    }
+    
+    // If TLP endpoint is provided, API key must also be provided
+    if (data.tlpEndpointUrl && !data.tlpApiKey) {
+      return false
+    }
+    
+    return true
+  }
 
   const steps = [
     'Basic Information',
@@ -60,10 +75,13 @@ const CreateCampaignPage: React.FC = () => {
   ]
 
   const handleNext = () => {
+    console.log('Moving to next step from:', activeStep)
+    console.log('Form validation state:', { isValid, errors })
     setActiveStep((prevStep) => prevStep + 1)
   }
 
   const handleBack = () => {
+    console.log('Moving to previous step from:', activeStep)
     setActiveStep((prevStep) => prevStep - 1)
   }
 
@@ -72,20 +90,58 @@ const CreateCampaignPage: React.FC = () => {
     setError(null)
 
     try {
+      console.log('Submitting campaign data:', data)
+      
+      // Validate required fields
+      if (!data.name || !data.startDate || !data.endDate) {
+        throw new Error('Missing required fields: name, startDate, endDate')
+      }
+
+      // Validate dates
+      const startDate = new Date(data.startDate)
+      const endDate = new Date(data.endDate)
+      
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        throw new Error('Invalid date format')
+      }
+      
+      if (endDate <= startDate) {
+        throw new Error('End date must be after start date')
+      }
+
+      // Validate TLP configuration if provided
+      if (data.tlpEndpointUrl && !data.tlpApiKey) {
+        throw new Error('TLP API key is required when TLP endpoint is provided')
+      }
+
+      // Prepare data for submission
+      const submissionData = {
+        ...data,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString()
+      }
+
+      console.log('Submitting formatted data:', submissionData)
+
       const response = await fetch('/api/campaigns', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(submissionData)
       })
 
+      console.log('Response status:', response.status)
+      
       if (!response.ok) {
-        throw new Error('Failed to create campaign')
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Campaign creation failed:', errorData)
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
       }
 
       const result = await response.json()
+      console.log('Campaign creation result:', result)
       
       if (result.success) {
         navigate(`/campaigns/${result.data.id}`)
@@ -93,6 +149,7 @@ const CreateCampaignPage: React.FC = () => {
         throw new Error(result.error || 'Failed to create campaign')
       }
     } catch (err) {
+      console.error('Campaign creation error:', err)
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setIsSubmitting(false)
@@ -145,6 +202,9 @@ const CreateCampaignPage: React.FC = () => {
                     InputLabelProps={{ shrink: true }}
                     error={!!errors.startDate}
                     helperText={errors.startDate?.message}
+                    inputProps={{
+                      min: new Date().toISOString().split('T')[0] // Cannot start in the past
+                    }}
                   />
                 )}
               />
@@ -154,7 +214,16 @@ const CreateCampaignPage: React.FC = () => {
               <Controller
                 name="endDate"
                 control={control}
-                rules={{ required: 'End date is required' }}
+                rules={{ 
+                  required: 'End date is required',
+                  validate: (value) => {
+                    const startDate = watch('startDate')
+                    if (startDate && value && new Date(value) <= new Date(startDate)) {
+                      return 'End date must be after start date'
+                    }
+                    return true
+                  }
+                }}
                 render={({ field }) => (
                   <TextField
                     {...field}
@@ -164,6 +233,9 @@ const CreateCampaignPage: React.FC = () => {
                     InputLabelProps={{ shrink: true }}
                     error={!!errors.endDate}
                     helperText={errors.endDate?.message}
+                    inputProps={{
+                      min: watch('startDate') || new Date().toISOString().split('T')[0]
+                    }}
                   />
                 )}
               />
@@ -368,7 +440,6 @@ const CreateCampaignPage: React.FC = () => {
                 name="tlpEndpointUrl"
                 control={control}
                 rules={{ 
-                  required: 'TLP endpoint URL is required',
                   pattern: {
                     value: /^https?:\/\/.+/,
                     message: 'Must be a valid HTTP/HTTPS URL'
@@ -391,7 +462,6 @@ const CreateCampaignPage: React.FC = () => {
               <Controller
                 name="tlpApiKey"
                 control={control}
-                rules={{ required: 'TLP API key is required' }}
                 render={({ field }) => (
                   <TextField
                     {...field}
@@ -401,6 +471,9 @@ const CreateCampaignPage: React.FC = () => {
                     error={!!errors.tlpApiKey}
                     helperText={errors.tlpApiKey?.message}
                     placeholder="Enter your TLP API key"
+                    inputProps={{
+                      autocomplete: 'new-password'
+                    }}
                   />
                 )}
               />
