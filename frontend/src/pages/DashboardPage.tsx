@@ -110,10 +110,42 @@ const DashboardPage: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Welcome back, {user?.firstName || user?.email}!
-        </Typography>
+      {/* Header with Logo */}
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', md: 'row' },
+        justifyContent: 'space-between', 
+        alignItems: { xs: 'flex-start', md: 'center' }, 
+        mb: 4,
+        gap: 2
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box
+            sx={{
+              width: 160,
+              height: 60,
+              backgroundColor: '#FF6B35',
+              borderRadius: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontWeight: 'bold',
+              fontSize: '1.2rem'
+            }}
+          >
+            Incentiva
+          </Box>
+          <Box>
+            <Typography variant="h4" component="h1" sx={{ mb: 0.5 }}>
+              Welcome back, {user?.firstName || user?.email}!
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Manage your loyalty campaigns and track participant progress
+            </Typography>
+          </Box>
+        </Box>
+        
         {isAdmin && (
           <Button
             variant="contained"

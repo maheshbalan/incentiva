@@ -28,6 +28,7 @@ import {
 } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import incentivaLogo from '../assets/images/incentiva.png'
 
 const drawerWidth = 240
 
@@ -81,7 +82,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       }}>
         <Box sx={{ mb: 1 }}>
           <img 
-            src="/assets/images/incentiva.png" 
+            src={incentivaLogo}
             alt="Incentiva Logo" 
             style={{ 
               height: '60px',

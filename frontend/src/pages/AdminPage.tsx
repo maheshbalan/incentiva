@@ -348,14 +348,34 @@ const AdminPage: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Administration
-      </Typography>
+      {/* Header with Logo */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
+        <Box
+          sx={{
+            width: 160,
+            height: 60,
+            backgroundColor: '#FF6B35',
+            borderRadius: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontWeight: 'bold',
+            fontSize: '1.2rem'
+          }}
+        >
+          Incentiva
+        </Box>
+        <Box>
+          <Typography variant="h4" component="h1" gutterBottom>
+            Administration
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Manage users, campaigns, AI models, and system settings.
+          </Typography>
+        </Box>
+      </Box>
       
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Manage users, campaigns, AI models, and system settings.
-      </Typography>
-
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs value={tabValue} onChange={handleTabChange} aria-label="admin tabs">
           <Tab label="User Management" />

@@ -1,306 +1,324 @@
-# Incentiva Loyalty Campaign Management System
+# Incentiva - AI-Powered Loyalty Campaign Management System
 
-A comprehensive, AI-powered platform for creating, managing, and executing loyalty campaigns with real-time participant tracking and TLP integration.
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/your-username/incentiva)
+[![Node.js](https://img.shields.io/badge/node-21.7-blue)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/typescript-5.0-blue)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-## 🚀 Features
+## 🚀 Overview
 
-### Core Campaign Management
-- **Multi-Step Campaign Creation**: Comprehensive 5-step campaign setup process
-- **Multi-Currency Support**: Individual and overall goals in MXN, USD, EUR, BRL, and more
-- **AI-Powered Rule Generation**: Natural language campaign criteria processing
-- **Real-Time Progress Tracking**: Live updates on campaign performance and participant progress
-- **TLP Integration**: Seamless connection with Pravici TLP for point management
+Incentiva is a comprehensive, AI-powered loyalty campaign management platform that enables businesses to create, manage, and execute sophisticated loyalty programs. Built with modern technologies and integrated with Pravici TLP (Transaction Loyalty Platform), it provides a seamless experience for both administrators and participants.
 
-### Administration & Control
-- **AI Model Management**: Support for Anthropic Claude, OpenAI GPT, Google Gemini, and Azure OpenAI
-- **User Management**: Complete user lifecycle with password reset functionality
-- **Participant Assignment**: Multi-select participant management for campaigns
-- **System Configuration**: Global settings and notification preferences
-- **Role-Based Access Control**: Admin and Participant role management
+## ✨ Key Features
 
-### Participant Experience
-- **Personal Dashboard**: Campaign enrollment and progress tracking
-- **Points Management**: Real-time balance, earning history, and redemption options
-- **In-Portal Redemption**: Direct redemption processing from the participant dashboard
-- **Transaction History**: Complete accrual and redemption transaction logs
-- **Campaign Analytics**: Individual goal progress and performance metrics
+### 🎯 **Campaign Management**
+- **Multi-Step Campaign Creation**: Intuitive wizard for setting up comprehensive loyalty campaigns
+- **Multi-Currency Goals**: Support for individual and overall campaign goals in multiple currencies (MXN, USD, EUR, etc.)
+- **AI-Powered Rule Generation**: Natural language campaign definition with intelligent rule generation
+- **TLP Integration**: Seamless integration with Pravici TLP for point allocation and redemption
 
-### Database Integration
-- **Customer Database Connection**: Read-only integration with customer sales systems
-- **Schema Analysis**: AI-powered understanding of customer database structures
-- **Sample Data**: Complete Goodyear Mexico sales database with 6 months of realistic data
-- **Campaign Goal Alignment**: Data structured to meet individual (200,000 MXN) and overall (2,000,000 MXN) goals
+### 🤖 **AI Integration**
+- **Multiple AI Providers**: Support for Anthropic Claude, OpenAI GPT, Google Gemini, and Azure OpenAI
+- **Intelligent Campaign Rules**: AI-generated campaign rules based on natural language descriptions
+- **Schema Analysis**: Automated database schema understanding and campaign rule generation
+- **Configurable Models**: Easy switching between AI providers with API key management
+
+### 👥 **User Management & Roles**
+- **Role-Based Access Control**: Admin and Participant roles with appropriate permissions
+- **User Administration**: Create, edit, and manage user accounts
+- **Password Reset**: Secure password reset functionality for administrators
+- **Participant Assignment**: Multi-selection participant assignment to campaigns
+
+### 📊 **Participant Experience**
+- **Personal Dashboard**: Comprehensive view of enrolled campaigns and progress
+- **Point Tracking**: Real-time point balance and transaction history
+- **Redemption Portal**: In-app redemption of points for various rewards
+- **Progress Monitoring**: Visual progress indicators and goal achievement tracking
+
+### 🏗️ **Technical Architecture**
+- **Modern Tech Stack**: React 18, TypeScript, Material-UI, Node.js, Express
+- **Database**: PostgreSQL with Prisma ORM and automated migrations
+- **Containerization**: Docker and Docker Compose for easy deployment
+- **Real-time Updates**: WebSocket integration for live campaign progress
+- **Security**: JWT authentication, rate limiting, and secure API endpoints
 
 ## 🏗️ Architecture
 
-### Technology Stack
+### **Technology Stack**
 - **Frontend**: React 18, TypeScript, Material-UI, Vite, Zustand, React Query
-- **Backend**: Node.js, Express, TypeScript, Prisma ORM, PostgreSQL
-- **Authentication**: Passport.js, JWT, OAuth (Google, Microsoft), bcrypt
-- **Real-Time**: Socket.io for live updates and notifications
-- **AI Integration**: Claude 3.5 Sonnet, OpenAI GPT, Google Gemini, Azure OpenAI
-- **Containerization**: Docker, Docker Compose for development and production
+- **Backend**: Node.js 21.7, Express, TypeScript, Prisma ORM, Passport.js
+- **Database**: PostgreSQL 15 with automated migrations
+- **AI Services**: Claude 3.5 Sonnet, GPT-4, Gemini, Azure OpenAI
+- **Containerization**: Docker, Docker Compose
+- **Authentication**: JWT, OAuth 2.0 (Google, Microsoft), bcrypt
 
-### Project Structure
+### **Project Structure**
 ```
 incentiva/
 ├── frontend/                 # React frontend application
 │   ├── src/
 │   │   ├── components/      # Reusable UI components
 │   │   ├── pages/          # Application pages
-│   │   │   ├── CreateCampaignPage.tsx    # Multi-step campaign creation
-│   │   │   ├── AdminPage.tsx             # Administration panel
-│   │   │   ├── ParticipantDashboardPage.tsx # Participant views
-│   │   │   └── ...         # Other pages
 │   │   ├── hooks/          # Custom React hooks
 │   │   ├── services/       # API service layer
-│   │   └── types/          # TypeScript type definitions
+│   │   └── assets/         # Static assets (logos, images)
+│   └── dist/               # Built frontend assets
 ├── backend/                 # Node.js backend API
 │   ├── src/
-│   │   ├── controllers/    # API endpoint controllers
+│   │   ├── controllers/    # API route controllers
 │   │   ├── services/       # Business logic services
-│   │   │   ├── aiService.ts        # AI integration service
-│   │   │   └── tlpService.ts       # TLP API integration
 │   │   ├── middleware/     # Express middleware
 │   │   └── utils/          # Utility functions
-│   └── prisma/             # Database schema and migrations
-│       └── goodyear_sample_schema.sql  # Sample customer database
+│   ├── prisma/             # Database schema and migrations
+│   └── public/             # Served frontend assets
 ├── shared/                  # Shared types and utilities
 │   └── src/
-│       ├── types.ts        # Common TypeScript interfaces
+│       ├── types.ts        # TypeScript interfaces
 │       └── utils.ts        # Shared utility functions
-└── docker-compose.yml       # Development environment setup
+└── docker-compose.yml      # Container orchestration
 ```
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Node.js 21.7+ (recommended)
+### **Prerequisites**
+- Node.js 21.7+ (use `nvm install 21.7` and `nvm use 21.7`)
 - Docker and Docker Compose
-- PostgreSQL database
-- AI API keys (Anthropic, OpenAI, etc.)
+- PostgreSQL 15+ (or use Docker)
 
-### Local Development Setup
+### **Option 1: Docker (Recommended)**
+```bash
+# Clone the repository
+git clone https://github.com/your-username/incentiva.git
+cd incentiva
 
-1. **Clone and Install**
-   ```bash
-   git clone <repository-url>
-   cd incentiva
-   npm install
-   ```
+# Start the system
+docker-compose up --build -d
 
-2. **Environment Configuration**
-   ```bash
-   cp backend/env.example backend/.env
-   # Edit .env with your database and API credentials
-   ```
-
-3. **Database Setup**
-   ```bash
-   # Start PostgreSQL
-   docker-compose up -d postgres
-   
-   # Run migrations
-   cd backend
-   npx prisma migrate dev
-   npx prisma generate
-   
-   # Seed sample data
-   npx prisma db seed
-   ```
-
-4. **Start Development Servers**
-   ```bash
-   # Terminal 1: Backend
-   npm run dev:backend
-   
-   # Terminal 2: Frontend
-   npm run dev:frontend
-   
-   # Terminal 3: Shared package
-   npm run dev:shared
-   ```
-
-### Docker Setup
-
-1. **Start All Services**
-   ```bash
-   docker-compose up -d
-   ```
-
-2. **Access Applications**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:8000
-   - Database: localhost:5432
-
-## 📊 Sample Campaign: Goodyear Mexico
-
-### Campaign Configuration
-- **Name**: Premium Line Sales Campaign
-- **Period**: January 2025 - June 2025
-- **Individual Goal**: 200,000 MXN per salesperson
-- **Overall Goal**: 2,000,000 MXN total
-- **Focus**: Premium Line tire sales
-
-### Sample Database Features
-- **10 Salespeople** across Mexico regions
-- **10 Major Customers** (AutoZone, O'Reilly, NAPA, etc.)
-- **6 Months of Sales Data** with realistic patterns
-- **Premium Line Focus** to meet campaign objectives
-- **Performance Variability** ensuring realistic goal achievement
-
-## 🔧 API Endpoints
-
-### Campaign Management
-```
-POST   /api/campaigns              # Create new campaign
-GET    /api/campaigns              # List all campaigns
-GET    /api/campaigns/:id          # Get campaign details
-PUT    /api/campaigns/:id          # Update campaign
-DELETE /api/campaigns/:id          # Delete campaign
-POST   /api/campaigns/:id/execute  # Execute campaign
-GET    /api/campaigns/:id/progress # Get campaign progress
+# Access the application
+open http://localhost:3001
 ```
 
-### Participant Management
-```
-POST   /api/campaigns/:id/participants     # Add participants
-GET    /api/campaigns/:id/participants     # List participants
-DELETE /api/campaigns/:id/participants/:userId # Remove participant
+### **Option 2: Local Development**
+```bash
+# Install dependencies
+npm install
+
+# Build shared package
+npm run build:shared
+
+# Start backend
+cd backend && npm run dev
+
+# Start frontend (in new terminal)
+cd frontend && npm run dev
 ```
 
-### AI Services
-```
-POST   /api/ai/analyze-schema     # Analyze customer database
-POST   /api/ai/generate-rules     # Generate campaign rules
-POST   /api/ai/validate-criteria  # Validate eligibility criteria
+## ⚙️ Configuration
+
+### **Environment Variables**
+Create `.env` files in the backend directory:
+
+```bash
+# Database
+DATABASE_URL="postgresql://username:password@localhost:5432/incentiva_dev"
+
+# JWT
+JWT_SECRET="your-super-secret-jwt-key"
+
+# AI Services
+ANTHROPIC_API_KEY="your-claude-api-key"
+OPENAI_API_KEY="your-openai-api-key"
+GOOGLE_API_KEY="your-gemini-api-key"
+
+# TLP Integration
+TLP_DEFAULT_API_KEY="your-tlp-api-key"
+TLP_DEFAULT_ENDPOINT="https://your-tlp-endpoint.com"
 ```
 
-### TLP Integration
+### **Docker Configuration**
+- **Development**: `docker-compose.dev.yml`
+- **Production**: `docker-compose.yml`
+- **Custom**: Modify environment variables in docker-compose files
+
+## 📚 API Documentation
+
+### **Authentication Endpoints**
+```http
+POST /api/auth/login          # User login
+POST /api/auth/register       # User registration
+GET  /api/auth/profile        # Get user profile
+POST /api/auth/logout         # User logout
 ```
-GET    /api/tlp/point-balance     # Get user point balance
-GET    /api/tlp/offers            # List redemption offers
-POST   /api/tlp/redemptions       # Process redemption
-GET    /api/tlp/transactions      # Get transaction history
+
+### **Campaign Management**
+```http
+POST   /api/campaigns                    # Create campaign
+GET    /api/campaigns                    # List campaigns
+GET    /api/campaigns/:id               # Get campaign details
+PUT    /api/campaigns/:id               # Update campaign
+DELETE /api/campaigns/:id               # Delete campaign
+POST   /api/campaigns/:id/execute       # Execute campaign
+POST   /api/campaigns/:id/allocate      # Allocate points
+```
+
+### **AI Services**
+```http
+POST /api/ai/analyze-schema            # Analyze database schema
+POST /api/ai/generate-rules            # Generate campaign rules
+POST /api/ai/validate-campaign         # Validate campaign configuration
+```
+
+### **TLP Integration**
+```http
+POST /api/tlp/point-types              # Create point type
+POST /api/tlp/offers                   # Create redemption offer
+POST /api/tlp/transactions             # Record point transaction
+GET  /api/tlp/balances                 # Get point balances
 ```
 
 ## 🎨 Design System
 
-### UI Components
-- **Material-UI Integration**: Consistent design language
-- **Responsive Layout**: Mobile-first approach
-- **Theme Customization**: Brand-specific color schemes
-- **Accessibility**: WCAG 2.1 AA compliance
+### **Color Palette**
+- **Primary**: #FF6B35 (Incentiva Orange)
+- **Secondary**: #FF8E53 (Light Orange)
+- **Accent**: #FFAB71 (Warm Yellow)
+- **Neutral**: #2E3440 (Dark Gray)
+- **Background**: #ECEFF4 (Light Gray)
 
-### User Experience
-- **Intuitive Navigation**: Clear information architecture
-- **Progressive Disclosure**: Step-by-step complex processes
-- **Real-Time Feedback**: Immediate user response
-- **Error Handling**: Graceful failure management
+### **Typography**
+- **Headings**: Inter, 700 weight
+- **Body**: Inter, 400 weight
+- **Monospace**: JetBrains Mono for code
 
-## 🔒 Security Features
+### **Components**
+- **Material-UI**: Base component library
+- **Custom**: Incentiva-specific components with consistent styling
+- **Responsive**: Mobile-first design approach
 
-### Authentication & Authorization
-- **Multi-Provider OAuth**: Google, Microsoft integration
-- **JWT Tokens**: Secure session management
-- **Role-Based Access**: Admin vs. Participant permissions
-- **Password Security**: bcrypt hashing, rate limiting
+## 🔧 Development
 
-### Data Protection
-- **API Key Encryption**: Secure storage of external API credentials
-- **Database Security**: Read-only access to customer databases
-- **Input Validation**: Zod schema validation throughout
-- **Audit Logging**: Complete operation tracking
+### **Available Scripts**
+```bash
+# Root level
+npm run build              # Build all packages
+npm run dev                # Start development environment
+npm run test               # Run tests
+npm run lint               # Lint code
+npm run format             # Format code
 
-## 🧪 Testing
+# Frontend
+npm run build:frontend     # Build frontend only
+npm run dev:frontend       # Start frontend dev server
 
-### Test Coverage
-- **Unit Tests**: Component and service testing
+# Backend
+npm run build:backend      # Build backend only
+npm run dev:backend        # Start backend dev server
+
+# Shared
+npm run build:shared       # Build shared package
+```
+
+### **Code Quality**
+- **TypeScript**: Strict type checking enabled
+- **ESLint**: Code linting with custom rules
+- **Prettier**: Code formatting
+- **Husky**: Git hooks for quality checks
+
+### **Testing Strategy**
+- **Unit Tests**: Jest for backend, Vitest for frontend
 - **Integration Tests**: API endpoint testing
-- **E2E Tests**: Complete user workflow testing
-- **Performance Tests**: Load and stress testing
-
-### Quality Assurance
-- **TypeScript**: Strict type checking
-- **ESLint**: Code quality enforcement
-- **Prettier**: Consistent code formatting
-- **Husky**: Pre-commit hooks
+- **E2E Tests**: Playwright for user journey testing
+- **Coverage**: Minimum 80% code coverage
 
 ## 🚀 Deployment
 
-### Production Environment
-- **Docker Containers**: Consistent deployment
-- **Environment Variables**: Secure configuration
-- **Health Checks**: Application monitoring
-- **Logging**: Centralized log management
+### **Production Build**
+```bash
+# Build production assets
+npm run build:production
 
-### CI/CD Pipeline
-- **Automated Testing**: Build validation
-- **Security Scanning**: Vulnerability detection
-- **Deployment Automation**: Zero-downtime updates
-- **Rollback Capability**: Quick recovery
+# Start production containers
+docker-compose -f docker-compose.yml up -d
+```
+
+### **Environment-Specific Configs**
+- **Development**: `docker-compose.dev.yml`
+- **Staging**: `docker-compose.staging.yml`
+- **Production**: `docker-compose.yml`
+
+### **Monitoring & Logging**
+- **Application Logs**: Structured logging with Winston
+- **Health Checks**: `/health` endpoint for monitoring
+- **Metrics**: Prometheus metrics collection
+- **Error Tracking**: Sentry integration
 
 ## 📈 Roadmap
 
-### Phase 1 (Current)
-- ✅ Campaign creation and management
-- ✅ Participant dashboard and tracking
-- ✅ AI model configuration
-- ✅ Sample database integration
+### **Phase 1: Core Platform ✅**
+- [x] User authentication and authorization
+- [x] Campaign creation and management
+- [x] Basic TLP integration
+- [x] AI-powered rule generation
+- [x] Participant dashboard
 
-### Phase 2 (Next)
-- 🔄 Backend API integration
-- 🔄 Real TLP API connection
-- 🔄 AI-powered rule generation
-- 🔄 Database schema analysis
+### **Phase 2: Advanced Features 🚧**
+- [ ] Real-time campaign monitoring
+- [ ] Advanced analytics and reporting
+- [ ] Multi-language support
+- [ ] Mobile application
+- [ ] Advanced AI features
 
-### Phase 3 (Future)
-- 📋 Advanced analytics and reporting
-- 📋 Machine learning optimization
-- 📋 Multi-tenant architecture
-- 📋 Mobile application
+### **Phase 3: Enterprise Features 📋**
+- [ ] Multi-tenant architecture
+- [ ] Advanced security features
+- [ ] API rate limiting and quotas
+- [ ] Enterprise SSO integration
+- [ ] Advanced reporting and analytics
 
 ## 🤝 Contributing
 
-### Development Guidelines
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Follow coding standards**: TypeScript, ESLint, Prettier
-4. **Write tests**: Ensure coverage for new functionality
-5. **Submit a pull request**: Detailed description of changes
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
-### Code Standards
-- **TypeScript**: Strict mode enabled
-- **React Hooks**: Functional components with hooks
-- **Error Handling**: Comprehensive error management
-- **Documentation**: JSDoc comments for all functions
+### **Development Setup**
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Submit a pull request
 
-## 📞 Support
-
-### Getting Help
-- **Documentation**: Comprehensive guides and examples
-- **Issues**: GitHub issue tracking
-- **Discussions**: Community support forum
-- **Email**: Direct support contact
-
-### Community
-- **Contributors**: Open source collaboration
-- **Feedback**: Feature requests and improvements
-- **Showcase**: Share your campaign success stories
+### **Code Standards**
+- Follow TypeScript best practices
+- Write comprehensive tests
+- Update documentation
+- Follow the established code style
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## 🆘 Support
+
+### **Getting Help**
+- **Documentation**: Check this README and the `/docs` folder
+- **Issues**: Report bugs and feature requests on GitHub
+- **Discussions**: Join community discussions on GitHub
+- **Email**: support@incentiva.me
+
+### **Community**
+- **GitHub**: [github.com/your-username/incentiva](https://github.com/your-username/incentiva)
+- **Discord**: [Join our Discord server](https://discord.gg/incentiva)
+- **Twitter**: [@IncentivaApp](https://twitter.com/IncentivaApp)
+
 ## 🙏 Acknowledgments
 
-- **Material-UI**: Component library and design system
-- **Prisma**: Database toolkit and ORM
-- **Anthropic**: AI model integration
-- **Pravici**: TLP integration platform
+- **Pravici**: For TLP integration and loyalty platform expertise
+- **Anthropic**: For Claude AI integration
+- **OpenAI**: For GPT integration
+- **Material-UI**: For the excellent component library
+- **Community**: All contributors and users of Incentiva
 
 ---
 
-**Incentiva.me** - Transforming loyalty campaigns with AI-powered intelligence and real-time engagement.
+**Made with ❤️ by the Incentiva Team**
 
-*Built with ❤️ for the future of customer loyalty management.* 
+*Empowering businesses to create meaningful loyalty experiences through AI-powered campaign management.* 

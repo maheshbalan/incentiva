@@ -281,13 +281,33 @@ const ParticipantDashboardPage: React.FC = () => {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Participant Dashboard
-      </Typography>
-      
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-        Welcome back, {user?.firstName || user?.email}! Track your campaign progress and redeem your points.
-      </Typography>
+      {/* Header with Logo */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
+        <Box
+          sx={{
+            width: 160,
+            height: 60,
+            backgroundColor: '#FF6B35',
+            borderRadius: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontWeight: 'bold',
+            fontSize: '1.2rem'
+          }}
+        >
+          Incentiva
+        </Box>
+        <Box>
+          <Typography variant="h4" component="h1" gutterBottom>
+            Participant Dashboard
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Welcome back, {user?.firstName || user?.email}! Track your campaign progress and redeem your points.
+          </Typography>
+        </Box>
+      </Box>
 
       {/* Summary Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>

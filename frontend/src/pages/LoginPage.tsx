@@ -13,6 +13,7 @@ import { Google, Microsoft } from '@mui/icons-material'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import incentivaLogo from '../assets/images/incentiva.png'
 
 interface LoginFormData {
   email: string
@@ -121,7 +122,7 @@ const LoginPage: React.FC = () => {
           <Box sx={{ textAlign: 'center', mb: 4 }}>
             <Box sx={{ mb: 2 }}>
               <img 
-                src="/assets/images/incentiva.png" 
+                src={incentivaLogo} 
                 alt="Incentiva Logo" 
                 style={{ 
                   height: '80px',
