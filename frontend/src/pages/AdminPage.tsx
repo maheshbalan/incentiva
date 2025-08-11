@@ -25,16 +25,31 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Alert
+  Alert,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  Switch,
+  Divider,
+  Autocomplete,
+  Badge
 } from '@mui/material'
 import {
   Add,
   Edit,
   Delete,
   Person,
-  AdminPanelSettings
+  AdminPanelSettings,
+  Refresh,
+  Settings,
+  Campaign,
+  Group,
+  SmartToy,
+  Key
 } from '@mui/icons-material'
 import { useAuth } from '../hooks/useAuth'
+import { AIProvider, SUPPORTED_CURRENCIES } from '@incentiva/shared'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -71,11 +86,33 @@ interface User {
   createdAt: string
 }
 
+interface Campaign {
+  id: string
+  name: string
+  status: string
+  participantCount: number
+  startDate: string
+  endDate: string
+}
+
+interface AIModelConfig {
+  id: string
+  provider: AIProvider
+  modelName: string
+  apiKey: string
+  isActive: boolean
+}
+
 const AdminPage: React.FC = () => {
   const { user } = useAuth()
   const [tabValue, setTabValue] = useState(0)
   const [openUserDialog, setOpenUserDialog] = useState(false)
+  const [openAIDialog, setOpenAIDialog] = useState(false)
+  const [openParticipantDialog, setOpenParticipantDialog] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [editingAI, setEditingAI] = useState<AIModelConfig | null>(null)
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
+  
   const [userForm, setUserForm] = useState({
     email: '',
     firstName: '',
@@ -84,7 +121,14 @@ const AdminPage: React.FC = () => {
     password: ''
   })
 
-  // Mock users data - in real app this would come from API
+  const [aiForm, setAIForm] = useState({
+    provider: AIProvider.ANTHROPIC,
+    modelName: '',
+    apiKey: '',
+    isActive: false
+  })
+
+  // Mock data - in real app this would come from API
   const [users, setUsers] = useState<User[]>([
     {
       id: '1',
@@ -112,10 +156,47 @@ const AdminPage: React.FC = () => {
     }
   ])
 
+  const [campaigns, setCampaigns] = useState<Campaign[]>([
+    {
+      id: '1',
+      name: 'Premium Line Sales Campaign',
+      status: 'ACTIVE',
+      participantCount: 10,
+      startDate: '2025-01-01',
+      endDate: '2025-06-30'
+    },
+    {
+      id: '2',
+      name: 'Q1 Performance Boost',
+      status: 'DRAFT',
+      participantCount: 5,
+      startDate: '2025-04-01',
+      endDate: '2025-06-30'
+    }
+  ])
+
+  const [aiModels, setAIModels] = useState<AIModelConfig[]>([
+    {
+      id: '1',
+      provider: AIProvider.ANTHROPIC,
+      modelName: 'claude-3-5-sonnet-20241022',
+      apiKey: '••••••••••••••••',
+      isActive: true
+    },
+    {
+      id: '2',
+      provider: AIProvider.OPENAI,
+      modelName: 'gpt-4-turbo-preview',
+      apiKey: '••••••••••••••••',
+      isActive: false
+    }
+  ])
+
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue)
   }
 
+  // User Management
   const handleCreateUser = () => {
     setEditingUser(null)
     setUserForm({
@@ -167,12 +248,92 @@ const AdminPage: React.FC = () => {
     setUsers(users.filter(u => u.id !== userId))
   }
 
+  const handleResetPassword = (userId: string) => {
+    // In real app, this would send a password reset email
+    alert(`Password reset email sent to user ${userId}`)
+  }
+
+  // AI Model Management
+  const handleCreateAIModel = () => {
+    setEditingAI(null)
+    setAIForm({
+      provider: AIProvider.ANTHROPIC,
+      modelName: '',
+      apiKey: '',
+      isActive: false
+    })
+    setOpenAIDialog(true)
+  }
+
+  const handleEditAIModel = (aiModel: AIModelConfig) => {
+    setEditingAI(aiModel)
+    setAIForm({
+      provider: aiModel.provider,
+      modelName: aiModel.modelName,
+      apiKey: aiModel.apiKey,
+      isActive: aiModel.isActive
+    })
+    setOpenAIDialog(true)
+  }
+
+  const handleSaveAIModel = () => {
+    if (editingAI) {
+      // Update existing AI model
+      setAIModels(aiModels.map(a => 
+        a.id === editingAI.id 
+          ? { ...a, ...aiForm }
+          : a
+      ))
+    } else {
+      // Create new AI model
+      const newAIModel: AIModelConfig = {
+        id: Date.now().toString(),
+        ...aiForm
+      }
+      setAIModels([...aiModels, newAIModel])
+    }
+    setOpenAIDialog(false)
+  }
+
+  const handleDeleteAIModel = (aiModelId: string) => {
+    setAIModels(aiModels.filter(a => a.id !== aiModelId))
+  }
+
+  const handleToggleAIModel = (aiModelId: string) => {
+    setAIModels(aiModels.map(a => 
+      a.id === aiModelId 
+        ? { ...a, isActive: !a.isActive }
+        : a
+    ))
+  }
+
+  // Participant Management
+  const handleManageParticipants = (campaign: Campaign) => {
+    setSelectedCampaign(campaign)
+    setOpenParticipantDialog(true)
+  }
+
+  const handleAddParticipants = (campaignId: string, userIds: string[]) => {
+    // In real app, this would add participants to the campaign
+    console.log(`Adding participants ${userIds} to campaign ${campaignId}`)
+    setOpenParticipantDialog(false)
+  }
+
   const getRoleIcon = (role: string) => {
     return role === 'ADMIN' ? <AdminPanelSettings /> : <Person />
   }
 
   const getRoleColor = (role: string) => {
     return role === 'ADMIN' ? 'error' : 'primary'
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'ACTIVE': return 'success'
+      case 'DRAFT': return 'warning'
+      case 'COMPLETED': return 'info'
+      default: return 'default'
+    }
   }
 
   if (user?.role !== 'ADMIN') {
@@ -192,17 +353,19 @@ const AdminPage: React.FC = () => {
       </Typography>
       
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Manage users, campaigns, and system settings.
+        Manage users, campaigns, AI models, and system settings.
       </Typography>
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs value={tabValue} onChange={handleTabChange} aria-label="admin tabs">
           <Tab label="User Management" />
           <Tab label="Campaign Management" />
+          <Tab label="AI Models" />
           <Tab label="System Settings" />
         </Tabs>
       </Box>
 
+      {/* User Management Tab */}
       <TabPanel value={tabValue} index={0}>
         <Card>
           <CardContent>
@@ -261,13 +424,22 @@ const AdminPage: React.FC = () => {
                         <IconButton 
                           onClick={() => handleEditUser(user)}
                           color="primary"
+                          title="Edit User"
                         >
                           <Edit />
+                        </IconButton>
+                        <IconButton 
+                          onClick={() => handleResetPassword(user.id)}
+                          color="secondary"
+                          title="Reset Password"
+                        >
+                          <Key />
                         </IconButton>
                         <IconButton 
                           onClick={() => handleDeleteUser(user.id)}
                           color="error"
                           disabled={user.id === '1'} // Don't allow deleting main admin
+                          title="Delete User"
                         >
                           <Delete />
                         </IconButton>
@@ -281,31 +453,151 @@ const AdminPage: React.FC = () => {
         </Card>
       </TabPanel>
 
+      {/* Campaign Management Tab */}
       <TabPanel value={tabValue} index={1}>
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
               Campaign Management
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Advanced campaign management features will be implemented here.
-              This will include assigning users to campaigns, setting up campaign rules, 
-              and managing campaign lifecycle.
-            </Typography>
+            
+            <TableContainer component={Paper} sx={{ mt: 2 }}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Campaign Name</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Participants</TableCell>
+                    <TableCell>Period</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {campaigns.map((campaign) => (
+                    <TableRow key={campaign.id}>
+                      <TableCell>{campaign.name}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={campaign.status}
+                          color={getStatusColor(campaign.status) as any}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Badge badgeContent={campaign.participantCount} color="primary">
+                          <Group />
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {campaign.startDate} - {campaign.endDate}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<Group />}
+                          onClick={() => handleManageParticipants(campaign)}
+                        >
+                          Manage Participants
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </CardContent>
         </Card>
       </TabPanel>
 
+      {/* AI Models Tab */}
       <TabPanel value={tabValue} index={2}>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6">
+                AI Model Configuration
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={handleCreateAIModel}
+                sx={{ 
+                  background: 'linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #FF8E53 0%, #FF6B35 100%)',
+                  }
+                }}
+              >
+                Add AI Model
+              </Button>
+            </Box>
+
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Provider</TableCell>
+                    <TableCell>Model</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {aiModels.map((aiModel) => (
+                    <TableRow key={aiModel.id}>
+                      <TableCell>
+                        <Chip
+                          icon={<SmartToy />}
+                          label={aiModel.provider}
+                          variant="outlined"
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>{aiModel.modelName}</TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={aiModel.isActive}
+                          onChange={() => handleToggleAIModel(aiModel.id)}
+                          color="primary"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <IconButton 
+                          onClick={() => handleEditAIModel(aiModel)}
+                          color="primary"
+                          title="Edit AI Model"
+                        >
+                          <Edit />
+                        </IconButton>
+                        <IconButton 
+                          onClick={() => handleDeleteAIModel(aiModel.id)}
+                          color="error"
+                          title="Delete AI Model"
+                        >
+                          <Delete />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      </TabPanel>
+
+      {/* System Settings Tab */}
+      <TabPanel value={tabValue} index={3}>
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
               System Settings
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              System-wide configuration options will be available here.
-              This includes TLP integration settings, notification preferences,
-              and system maintenance options.
+              Global system configuration options will be available here.
+              This includes notification preferences, system maintenance options,
+              and other administrative settings.
             </Typography>
           </CardContent>
         </Card>
@@ -376,6 +668,133 @@ const AdminPage: React.FC = () => {
             }}
           >
             {editingUser ? 'Update' : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* AI Model Create/Edit Dialog */}
+      <Dialog open={openAIDialog} onClose={() => setOpenAIDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {editingAI ? 'Edit AI Model' : 'Add AI Model'}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel>AI Provider</InputLabel>
+              <Select
+                value={aiForm.provider}
+                label="AI Provider"
+                onChange={(e) => setAIForm({...aiForm, provider: e.target.value as AIProvider})}
+              >
+                <MenuItem value={AIProvider.ANTHROPIC}>Anthropic (Claude)</MenuItem>
+                <MenuItem value={AIProvider.OPENAI}>OpenAI (GPT)</MenuItem>
+                <MenuItem value={AIProvider.GOOGLE}>Google (Gemini)</MenuItem>
+                <MenuItem value={AIProvider.AZURE}>Azure OpenAI</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              fullWidth
+              label="Model Name"
+              value={aiForm.modelName}
+              onChange={(e) => setAIForm({...aiForm, modelName: e.target.value})}
+              placeholder="e.g., claude-3-5-sonnet-20241022"
+              required
+            />
+            <TextField
+              fullWidth
+              label="API Key"
+              type="password"
+              value={aiForm.apiKey}
+              onChange={(e) => setAIForm({...aiForm, apiKey: e.target.value})}
+              required
+            />
+            <FormControl fullWidth>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={aiForm.isActive ? 'active' : 'inactive'}
+                label="Status"
+                onChange={(e) => setAIForm({...aiForm, isActive: e.target.value === 'active'})}
+              >
+                <MenuItem value="active">Active</MenuItem>
+                <MenuItem value="inactive">Inactive</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenAIDialog(false)}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSaveAIModel}
+            variant="contained"
+            sx={{ 
+              background: 'linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #FF8E53 0%, #FF6B35 100%)',
+              }
+            }}
+          >
+            {editingAI ? 'Update' : 'Add'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Participant Management Dialog */}
+      <Dialog open={openParticipantDialog} onClose={() => setOpenParticipantDialog(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Manage Participants - {selectedCampaign?.name}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Select users to add as participants to this campaign.
+            </Typography>
+            
+            <Autocomplete
+              multiple
+              options={users.filter(u => u.role === 'PARTICIPANT')}
+              getOptionLabel={(option) => `${option.firstName || ''} ${option.lastName || ''} (${option.email})`.trim()}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Select Participants"
+                  placeholder="Choose users..."
+                />
+              )}
+              renderOption={(props, option) => (
+                <li {...props}>
+                  <Box>
+                    <Typography variant="body1">
+                      {option.firstName && option.lastName 
+                        ? `${option.firstName} ${option.lastName}`
+                        : option.email
+                      }
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {option.email}
+                    </Typography>
+                  </Box>
+                </li>
+              )}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenParticipantDialog(false)}>
+            Cancel
+          </Button>
+          <Button 
+            variant="contained"
+            onClick={() => selectedCampaign && handleAddParticipants(selectedCampaign.id, [])}
+            sx={{ 
+              background: 'linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #FF8E53 0%, #FF6B35 100%)',
+              }
+            }}
+          >
+            Add Participants
           </Button>
         </DialogActions>
       </Dialog>

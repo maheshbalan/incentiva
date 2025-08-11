@@ -350,7 +350,11 @@ export class TLPService {
       minimumSpend,
       enabled: true,
       online: false,
-      location: true
+      location: true,
+      // Derived fields for compatibility
+      isActive: true,
+      currentRedemptions: 0,
+      pointCost: points
     };
 
     return this.createOffer(offer);
@@ -369,12 +373,15 @@ export class TLPService {
       offerSubtype: 'product',
       name: prizeName,
       description: prizeDescription,
-      points: pointCost,
+      pointCost: pointCost,
       pointType: pointTypeId,
       enabled: true,
       online: true,
       location: false,
-      imageUrl: imageUrl
+      imageUrl: imageUrl,
+      // Derived fields for compatibility
+      isActive: true,
+      currentRedemptions: 0
     };
 
     return this.createOffer(offer);
@@ -391,7 +398,7 @@ export class TLPService {
       memberId,
       pointType: pointTypeId,
       points,
-      transactionType: 'accrue',
+      transactionType: 'ACCRUAL',
       description,
       metadata
     };

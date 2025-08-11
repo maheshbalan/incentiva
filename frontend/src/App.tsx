@@ -11,6 +11,7 @@ import CampaignDetailPage from './pages/CampaignDetailPage'
 import CreateCampaignPage from './pages/CreateCampaignPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminPage from './pages/AdminPage'
+import ParticipantDashboardPage from './pages/ParticipantDashboardPage'
 
 function App() {
   const { user, loading } = useAuth()
@@ -47,6 +48,7 @@ function App() {
         <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/participant" element={<ParticipantDashboardPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Layout>

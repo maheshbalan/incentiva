@@ -23,7 +23,8 @@ import {
   Campaign,
   Person,
   Logout,
-  Settings
+  Settings,
+  AccountBalance
 } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -63,7 +64,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { text: 'Campaigns', icon: <Campaign />, path: '/campaigns' },
     ...(user?.role === 'ADMIN' ? [
       { text: 'Administration', icon: <Settings />, path: '/admin' },
-    ] : []),
+    ] : [
+      { text: 'My Dashboard', icon: <AccountBalance />, path: '/participant' },
+    ]),
   ]
 
   const drawer = (

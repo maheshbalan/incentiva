@@ -1,580 +1,306 @@
 # Incentiva Loyalty Campaign Management System
 
-A comprehensive AI-powered loyalty campaign management platform that integrates with Pravici TLP APIs to create, manage, and execute sophisticated loyalty programs. Built with modern web technologies and containerized deployment support.
-
-## 🎨 Design Philosophy
-
-Built with **Bauhaus-inspired design principles** featuring:
-- **Geometric simplicity** with clean lines and structured layouts
-- **Functional aesthetics** prioritizing usability and clarity
-- **Incentiva branding** with a sophisticated color palette
-- **Modern typography** using Inter font family
-- **Gradient accents** and subtle shadows for depth
+A comprehensive, AI-powered platform for creating, managing, and executing loyalty campaigns with real-time participant tracking and TLP integration.
 
 ## 🚀 Features
 
-### Core Functionality
-- **AI-Powered Campaign Design** - Natural language campaign definition using Claude 3.5 Sonnet
-- **Schema Analysis** - AI-driven database schema understanding and optimization
-- **Rules Engine** - Automatic code generation for campaign execution
-- **TLP Integration** - Complete Pravici TLP API integration for loyalty program execution
-- **Real-time Monitoring** - Live campaign progress tracking with WebSocket support
-- **Multi-language Support** - English, Portuguese, Spanish localization ready
+### Core Campaign Management
+- **Multi-Step Campaign Creation**: Comprehensive 5-step campaign setup process
+- **Multi-Currency Support**: Individual and overall goals in MXN, USD, EUR, BRL, and more
+- **AI-Powered Rule Generation**: Natural language campaign criteria processing
+- **Real-Time Progress Tracking**: Live updates on campaign performance and participant progress
+- **TLP Integration**: Seamless connection with Pravici TLP for point management
 
-### User Interfaces
-- **Admin Dashboard** - Comprehensive campaign creation and management interface
-- **Participant Dashboard** - Progress tracking and redemption interface
-- **Responsive Design** - Mobile-first approach with Material-UI components
-- **Bauhaus Styling** - Modern, clean interface with consistent design language
+### Administration & Control
+- **AI Model Management**: Support for Anthropic Claude, OpenAI GPT, Google Gemini, and Azure OpenAI
+- **User Management**: Complete user lifecycle with password reset functionality
+- **Participant Assignment**: Multi-select participant management for campaigns
+- **System Configuration**: Global settings and notification preferences
+- **Role-Based Access Control**: Admin and Participant role management
 
-### Authentication & Security
-- **Multi-provider OAuth** - Google, Microsoft integration with Passport.js
-- **JWT Authentication** - Secure token-based authentication system
-- **Role-based Access Control** - Admin vs Participant role management
-- **Encrypted Storage** - Secure data handling with bcrypt password hashing
-- **Rate Limiting** - API protection with express-rate-limit
+### Participant Experience
+- **Personal Dashboard**: Campaign enrollment and progress tracking
+- **Points Management**: Real-time balance, earning history, and redemption options
+- **In-Portal Redemption**: Direct redemption processing from the participant dashboard
+- **Transaction History**: Complete accrual and redemption transaction logs
+- **Campaign Analytics**: Individual goal progress and performance metrics
+
+### Database Integration
+- **Customer Database Connection**: Read-only integration with customer sales systems
+- **Schema Analysis**: AI-powered understanding of customer database structures
+- **Sample Data**: Complete Goodyear Mexico sales database with 6 months of realistic data
+- **Campaign Goal Alignment**: Data structured to meet individual (200,000 MXN) and overall (2,000,000 MXN) goals
 
 ## 🏗️ Architecture
 
 ### Technology Stack
-- **Frontend**: React 18 + TypeScript + Material-UI + Vite
-- **Backend**: Node.js + Express + TypeScript + Prisma ORM
-- **Database**: PostgreSQL 15 with automated migrations
-- **AI Integration**: Claude 3.5 Sonnet via Anthropic API
-- **Real-time**: Socket.io + WebSocket for live updates
-- **Authentication**: Passport.js + JWT + OAuth providers
-- **State Management**: Zustand for frontend, React Query for server state
-- **Validation**: Zod schema validation throughout the stack
-- **Containerization**: Docker + Docker Compose for deployment
+- **Frontend**: React 18, TypeScript, Material-UI, Vite, Zustand, React Query
+- **Backend**: Node.js, Express, TypeScript, Prisma ORM, PostgreSQL
+- **Authentication**: Passport.js, JWT, OAuth (Google, Microsoft), bcrypt
+- **Real-Time**: Socket.io for live updates and notifications
+- **AI Integration**: Claude 3.5 Sonnet, OpenAI GPT, Google Gemini, Azure OpenAI
+- **Containerization**: Docker, Docker Compose for development and production
 
 ### Project Structure
 ```
 incentiva/
-├── frontend/          # React TypeScript frontend with Vite
+├── frontend/                 # React frontend application
 │   ├── src/
-│   │   ├── components/    # Reusable UI components
-│   │   ├── pages/         # Route-based page components
-│   │   ├── hooks/         # Custom React hooks
-│   │   ├── services/      # API service layer
-│   │   └── main.tsx       # Application entry point
-│   └── package.json
-├── backend/           # Node.js Express backend
+│   │   ├── components/      # Reusable UI components
+│   │   ├── pages/          # Application pages
+│   │   │   ├── CreateCampaignPage.tsx    # Multi-step campaign creation
+│   │   │   ├── AdminPage.tsx             # Administration panel
+│   │   │   ├── ParticipantDashboardPage.tsx # Participant views
+│   │   │   └── ...         # Other pages
+│   │   ├── hooks/          # Custom React hooks
+│   │   ├── services/       # API service layer
+│   │   └── types/          # TypeScript type definitions
+├── backend/                 # Node.js backend API
 │   ├── src/
-│   │   ├── controllers/   # Route controllers
-│   │   ├── services/      # Business logic services
-│   │   ├── middleware/    # Express middleware
-│   │   ├── utils/         # Utility functions
-│   │   └── index.ts       # Server entry point
-│   ├── prisma/            # Database schema and migrations
-│   └── package.json
-├── shared/            # Shared TypeScript types and utilities
-│   ├── src/
-│   │   ├── types.ts       # Common type definitions
-│   │   └── utils.ts       # Shared utility functions
-│   └── package.json
-├── docker-compose.yml      # Production Docker setup
-├── docker-compose.dev.yml  # Development Docker setup
-├── DOCKER_README.md        # Docker-specific documentation
-└── package.json            # Root workspace configuration
+│   │   ├── controllers/    # API endpoint controllers
+│   │   ├── services/       # Business logic services
+│   │   │   ├── aiService.ts        # AI integration service
+│   │   │   └── tlpService.ts       # TLP API integration
+│   │   ├── middleware/     # Express middleware
+│   │   └── utils/          # Utility functions
+│   └── prisma/             # Database schema and migrations
+│       └── goodyear_sample_schema.sql  # Sample customer database
+├── shared/                  # Shared types and utilities
+│   └── src/
+│       ├── types.ts        # Common TypeScript interfaces
+│       └── utils.ts        # Shared utility functions
+└── docker-compose.yml       # Development environment setup
 ```
 
-## 🛠️ Installation & Setup
+## 🚀 Quick Start
 
 ### Prerequisites
-- **Node.js** >= 18.0.0
-- **npm** >= 9.0.0
-- **Docker** and **Docker Compose** (for containerized deployment)
-- **PostgreSQL** database (or use Docker container)
-- **Redis** (optional, for Bull queues and caching)
+- Node.js 21.7+ (recommended)
+- Docker and Docker Compose
+- PostgreSQL database
+- AI API keys (Anthropic, OpenAI, etc.)
 
-### Quick Start
+### Local Development Setup
 
-#### Option 1: Local Development (Recommended for developers)
-
-1. **Clone the repository**
+1. **Clone and Install**
    ```bash
    git clone <repository-url>
    cd incentiva
+   npm install
    ```
 
-2. **Install all dependencies**
+2. **Environment Configuration**
    ```bash
-   npm run install:all
-   ```
-
-3. **Set up environment variables**
-   ```bash
-   # Copy environment template
    cp backend/env.example backend/.env
-   
-   # Edit backend/.env with your configuration
-   # At minimum, set DATABASE_URL and JWT_SECRET
+   # Edit .env with your database and API credentials
    ```
 
-4. **Set up the database**
+3. **Database Setup**
    ```bash
-   # Option A: Use Docker for PostgreSQL only
-   npm run docker:up
+   # Start PostgreSQL
+   docker-compose up -d postgres
    
-   # Option B: Use your local PostgreSQL
-   # Update DATABASE_URL in backend/.env accordingly
+   # Run migrations
+   cd backend
+   npx prisma migrate dev
+   npx prisma generate
    
-   # Setup database schema and seed data
-   npm run setup:db
+   # Seed sample data
+   npx prisma db seed
    ```
 
-5. **Start the development servers**
+4. **Start Development Servers**
    ```bash
-   # Start both frontend and backend
-   npm run dev
+   # Terminal 1: Backend
+   npm run dev:backend
    
-   # Or start individually
-   npm run dev:frontend    # Frontend on http://localhost:5173
-   npm run dev:backend     # Backend on http://localhost:3001
+   # Terminal 2: Frontend
+   npm run dev:frontend
+   
+   # Terminal 3: Shared package
+   npm run dev:shared
    ```
 
-#### Option 2: Full Docker Deployment
+### Docker Setup
 
-1. **Clone and navigate to project**
+1. **Start All Services**
    ```bash
-   git clone <repository-url>
-   cd incentiva
+   docker-compose up -d
    ```
 
-2. **Build and start all services**
-   ```bash
-   npm run docker:build
-   npm run docker:up
-   ```
+2. **Access Applications**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+   - Database: localhost:5432
 
-3. **Access the application**
-   - **Application**: http://localhost:3001
-   - **Database**: localhost:5432
-   - **Default Admin**: incentiva-admin@incentiva.me / exatatech
+## 📊 Sample Campaign: Goodyear Mexico
 
-## 🔧 Configuration
+### Campaign Configuration
+- **Name**: Premium Line Sales Campaign
+- **Period**: January 2025 - June 2025
+- **Individual Goal**: 200,000 MXN per salesperson
+- **Overall Goal**: 2,000,000 MXN total
+- **Focus**: Premium Line tire sales
 
-### Environment Variables
+### Sample Database Features
+- **10 Salespeople** across Mexico regions
+- **10 Major Customers** (AutoZone, O'Reilly, NAPA, etc.)
+- **6 Months of Sales Data** with realistic patterns
+- **Premium Line Focus** to meet campaign objectives
+- **Performance Variability** ensuring realistic goal achievement
 
-#### Backend (.env)
-```env
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/incentiva_db"
-
-# JWT Secret
-JWT_SECRET="your-super-secret-jwt-key-here"
-
-# Server Configuration
-PORT=3001
-NODE_ENV=development
-
-# AI Service (Claude 3.5 Sonnet)
-ANTHROPIC_API_KEY="your-anthropic-api-key-here"
-
-# OAuth Configuration
-GOOGLE_CLIENT_ID="your-google-client-id"
-GOOGLE_CLIENT_SECRET="your-google-client-secret"
-MICROSOFT_CLIENT_ID="your-microsoft-client-id"
-MICROSOFT_CLIENT_SECRET="your-microsoft-client-secret"
-
-# Redis (for Bull queues and caching)
-REDIS_URL="redis://localhost:6379"
-
-# TLP API Configuration
-TLP_DEFAULT_ENDPOINT="https://exata-customer.pravici.io"
-TLP_DEFAULT_API_KEY="your-default-tlp-api-key"
-
-# File Upload
-MAX_FILE_SIZE=10485760 # 10MB
-UPLOAD_PATH="./uploads"
-
-# Logging
-LOG_LEVEL="info"
-```
-
-### Docker Configuration
-
-The project includes two Docker Compose configurations:
-
-- **`docker-compose.yml`** - Production setup with full application stack
-- **`docker-compose.dev.yml`** - Development setup with PostgreSQL only
-
-## 📚 API Documentation
-
-### Authentication Endpoints
-- `POST /api/auth/login` - User login with email/password
-- `POST /api/auth/register` - User registration
-- `GET /api/auth/profile` - Get authenticated user profile
-- `POST /api/auth/logout` - User logout
-- `GET /api/auth/google` - Google OAuth login
-- `GET /api/auth/microsoft` - Microsoft OAuth login
+## 🔧 API Endpoints
 
 ### Campaign Management
-- `POST /api/campaigns` - Create new campaign
-- `GET /api/campaigns` - List all campaigns with pagination
-- `GET /api/campaigns/:id` - Get campaign details
-- `PUT /api/campaigns/:id` - Update campaign
-- `DELETE /api/campaigns/:id` - Delete campaign
-- `POST /api/campaigns/:id/approve` - Approve campaign for execution
-- `POST /api/campaigns/:id/execute` - Execute campaign
+```
+POST   /api/campaigns              # Create new campaign
+GET    /api/campaigns              # List all campaigns
+GET    /api/campaigns/:id          # Get campaign details
+PUT    /api/campaigns/:id          # Update campaign
+DELETE /api/campaigns/:id          # Delete campaign
+POST   /api/campaigns/:id/execute  # Execute campaign
+GET    /api/campaigns/:id/progress # Get campaign progress
+```
 
-### Schema & Rules Engine
-- `POST /api/campaigns/:id/schema` - Upload database schema
-- `POST /api/campaigns/:id/rules` - Generate campaign rules using AI
-- `GET /api/campaigns/:id/schema` - Get schema analysis results
-- `GET /api/campaigns/:id/rules` - Get generated rules
+### Participant Management
+```
+POST   /api/campaigns/:id/participants     # Add participants
+GET    /api/campaigns/:id/participants     # List participants
+DELETE /api/campaigns/:id/participants/:userId # Remove participant
+```
 
-### Participant Features
-- `GET /api/participants/campaigns` - Get user's available campaigns
-- `GET /api/participants/:campaignId/progress` - Track campaign progress
-- `GET /api/participants/:campaignId/offers` - View available offers
-- `POST /api/participants/:campaignId/redeem` - Redeem points/offers
+### AI Services
+```
+POST   /api/ai/analyze-schema     # Analyze customer database
+POST   /api/ai/generate-rules     # Generate campaign rules
+POST   /api/ai/validate-criteria  # Validate eligibility criteria
+```
 
 ### TLP Integration
-- `POST /api/tlp/configure` - Configure TLP API endpoints
-- `GET /api/tlp/health` - Check TLP API health
-- `POST /api/tlp/generate-graphics` - Generate offer graphics
-- `POST /api/tlp/execute-campaign` - Execute campaign via TLP
-
-### Health & Monitoring
-- `GET /health` - Application health check
-- `GET /api/status` - Detailed system status
+```
+GET    /api/tlp/point-balance     # Get user point balance
+GET    /api/tlp/offers            # List redemption offers
+POST   /api/tlp/redemptions       # Process redemption
+GET    /api/tlp/transactions      # Get transaction history
+```
 
 ## 🎨 Design System
 
-### Color Palette
-- **Primary**: `#2E3440` (Dark slate)
-- **Secondary**: `#D08770` (Warm orange)
-- **Success**: `#A3BE8C` (Green)
-- **Warning**: `#EBCB8B` (Yellow)
-- **Error**: `#BF616A` (Red)
-- **Info**: `#81A1C1` (Blue)
-- **Background**: `#ECEFF4` (Light gray)
+### UI Components
+- **Material-UI Integration**: Consistent design language
+- **Responsive Layout**: Mobile-first approach
+- **Theme Customization**: Brand-specific color schemes
+- **Accessibility**: WCAG 2.1 AA compliance
 
-### Typography
-- **Font Family**: Inter
-- **Weights**: 300, 400, 500, 600, 700
-- **Letter Spacing**: Optimized for readability
+### User Experience
+- **Intuitive Navigation**: Clear information architecture
+- **Progressive Disclosure**: Step-by-step complex processes
+- **Real-Time Feedback**: Immediate user response
+- **Error Handling**: Graceful failure management
 
-### Components
-- **Cards**: Subtle shadows with border accents
-- **Buttons**: Gradient backgrounds with hover effects
-- **Forms**: Rounded inputs with focus states
-- **Progress**: Custom styled progress indicators
-- **Charts**: Material-UI X Charts integration
+## 🔒 Security Features
 
-## 🔄 Development Workflow
+### Authentication & Authorization
+- **Multi-Provider OAuth**: Google, Microsoft integration
+- **JWT Tokens**: Secure session management
+- **Role-Based Access**: Admin vs. Participant permissions
+- **Password Security**: bcrypt hashing, rate limiting
 
-### Available Scripts
-
-#### Root Level Commands
-```bash
-# Development
-npm run dev              # Start both frontend and backend
-npm run dev:frontend     # Start frontend only
-npm run dev:backend      # Start backend only
-
-# Building
-npm run build            # Build all packages
-npm run build:frontend   # Build frontend
-npm run build:backend    # Build backend
-npm run build:shared     # Build shared package
-
-# Testing
-npm run test             # Run all tests
-npm run test:frontend    # Test frontend
-npm run test:backend     # Test backend
-npm run test:shared      # Test shared package
-
-# Linting
-npm run lint             # Lint all packages
-npm run lint:frontend    # Lint frontend
-npm run lint:backend     # Lint backend
-npm run lint:shared      # Lint shared package
-
-# Database Operations
-npm run setup:db         # Setup database (generate + push + seed)
-npm run migrate          # Run database migrations
-npm run seed             # Seed database with initial data
-
-# Docker Operations
-npm run docker:build     # Build Docker images
-npm run docker:up        # Start all services
-npm run docker:down      # Stop all services
-npm run docker:restart   # Restart services
-npm run docker:logs      # View service logs
-npm run docker:clean     # Clean up containers and volumes
-
-# Utilities
-npm run install:all      # Install dependencies for all packages
-```
-
-#### Package-Specific Commands
-```bash
-# Backend
-cd backend
-npm run db:generate      # Generate Prisma client
-npm run db:push          # Push schema to database
-npm run db:migrate       # Run migrations
-npm run db:seed          # Seed database
-
-# Frontend
-cd frontend
-npm run type-check       # TypeScript type checking
-npm run preview          # Preview production build
-
-# Shared
-cd shared
-npm run dev              # Watch mode for development
-```
-
-### Development Best Practices
-
-1. **Type Safety**: Use TypeScript throughout the stack
-2. **Code Quality**: Run linting before commits
-3. **Testing**: Write tests for new functionality
-4. **Database**: Use migrations for schema changes
-5. **Environment**: Keep sensitive data in .env files
-6. **Dependencies**: Use workspace dependencies for shared packages
+### Data Protection
+- **API Key Encryption**: Secure storage of external API credentials
+- **Database Security**: Read-only access to customer databases
+- **Input Validation**: Zod schema validation throughout
+- **Audit Logging**: Complete operation tracking
 
 ## 🧪 Testing
 
-### Backend Testing
-```bash
-cd backend
-npm run test             # Run Jest tests
-npm run test:watch       # Watch mode
-npm run test:coverage    # Coverage report
-```
+### Test Coverage
+- **Unit Tests**: Component and service testing
+- **Integration Tests**: API endpoint testing
+- **E2E Tests**: Complete user workflow testing
+- **Performance Tests**: Load and stress testing
 
-### Frontend Testing
-```bash
-cd frontend
-npm run test             # Run Vitest tests
-npm run test:ui          # UI test runner
-npm run test:coverage    # Coverage report
-```
-
-### Shared Package Testing
-```bash
-cd shared
-npm run test             # Run Jest tests
-```
+### Quality Assurance
+- **TypeScript**: Strict type checking
+- **ESLint**: Code quality enforcement
+- **Prettier**: Consistent code formatting
+- **Husky**: Pre-commit hooks
 
 ## 🚀 Deployment
 
-### Production Build
-```bash
-# Build all packages
-npm run build
+### Production Environment
+- **Docker Containers**: Consistent deployment
+- **Environment Variables**: Secure configuration
+- **Health Checks**: Application monitoring
+- **Logging**: Centralized log management
 
-# Start production server
-cd backend && npm start
-```
+### CI/CD Pipeline
+- **Automated Testing**: Build validation
+- **Security Scanning**: Vulnerability detection
+- **Deployment Automation**: Zero-downtime updates
+- **Rollback Capability**: Quick recovery
 
-### Docker Deployment
+## 📈 Roadmap
 
-#### Development Environment
-```bash
-# Start only PostgreSQL for local development
-docker-compose -f docker-compose.dev.yml up -d
+### Phase 1 (Current)
+- ✅ Campaign creation and management
+- ✅ Participant dashboard and tracking
+- ✅ AI model configuration
+- ✅ Sample database integration
 
-# Run application locally
-npm run dev
-```
+### Phase 2 (Next)
+- 🔄 Backend API integration
+- 🔄 Real TLP API connection
+- 🔄 AI-powered rule generation
+- 🔄 Database schema analysis
 
-#### Production Environment
-```bash
-# Build and start all services
-npm run docker:build
-npm run docker:up
-
-# View logs
-npm run docker:logs
-
-# Stop services
-npm run docker:down
-```
-
-#### Docker Commands Reference
-```bash
-# Build images
-docker-compose build
-
-# Start services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-
-# Clean up
-docker-compose down -v && docker system prune -f
-```
-
-### Environment-Specific Configurations
-
-The project supports multiple environments:
-- **Development**: Local development with hot reloading
-- **Production**: Optimized builds with Docker containers
-- **Staging**: Production-like environment for testing
+### Phase 3 (Future)
+- 📋 Advanced analytics and reporting
+- 📋 Machine learning optimization
+- 📋 Multi-tenant architecture
+- 📋 Mobile application
 
 ## 🤝 Contributing
 
-### Development Setup
-1. Fork the repository
-2. Clone your fork locally
-3. Install dependencies: `npm run install:all`
-4. Set up environment variables
-5. Create a feature branch: `git checkout -b feature/your-feature`
-6. Make your changes following the coding standards
-7. Add tests for new functionality
-8. Ensure all tests pass: `npm run test`
-9. Run linting: `npm run lint`
-10. Commit your changes with descriptive messages
-11. Push to your fork and submit a pull request
+### Development Guidelines
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+3. **Follow coding standards**: TypeScript, ESLint, Prettier
+4. **Write tests**: Ensure coverage for new functionality
+5. **Submit a pull request**: Detailed description of changes
 
-### Coding Standards
-- Use TypeScript for all new code
-- Follow ESLint configuration
-- Write meaningful commit messages
-- Add JSDoc comments for public APIs
-- Use conventional commit format
+### Code Standards
+- **TypeScript**: Strict mode enabled
+- **React Hooks**: Functional components with hooks
+- **Error Handling**: Comprehensive error management
+- **Documentation**: JSDoc comments for all functions
 
-### Pull Request Process
-1. Ensure all CI checks pass
-2. Request review from maintainers
-3. Address feedback and make necessary changes
-4. Maintainers will merge after approval
+## 📞 Support
+
+### Getting Help
+- **Documentation**: Comprehensive guides and examples
+- **Issues**: GitHub issue tracking
+- **Discussions**: Community support forum
+- **Email**: Direct support contact
+
+### Community
+- **Contributors**: Open source collaboration
+- **Feedback**: Feature requests and improvements
+- **Showcase**: Share your campaign success stories
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+## 🙏 Acknowledgments
 
-### Getting Help
-- **Documentation**: Check this README and DOCKER_README.md
-- **Issues**: Create an issue in the repository
-- **Discussions**: Use GitHub Discussions for questions
-- **Contact**: Reach out to the development team
-
-### Common Issues
-
-#### Database Connection Issues
-```bash
-# Check if PostgreSQL is running
-docker-compose ps
-
-# Reset database
-npm run docker:clean
-npm run docker:up
-npm run setup:db
-```
-
-#### Frontend Build Issues
-```bash
-# Clear node_modules and reinstall
-rm -rf node_modules package-lock.json
-npm run install:all
-```
-
-#### Docker Issues
-```bash
-# Clean everything and start fresh
-npm run docker:clean
-npm run docker:build
-npm run docker:up
-```
-
-## 🔮 Roadmap
-
-### Phase 1: Core Infrastructure ✅
-- [x] React frontend with TypeScript and Vite
-- [x] Express backend with TypeScript and Prisma
-- [x] PostgreSQL database with automated migrations
-- [x] Authentication system with OAuth support
-- [x] Basic UI components with Material-UI
-- [x] Docker containerization
-- [x] Shared package architecture
-
-### Phase 2: Admin Dashboard 🚧
-- [x] Campaign creation interface
-- [x] Schema upload and analysis
-- [x] TLP configuration
-- [x] Campaign management workflow
-- [ ] Real-time progress monitoring
-- [ ] Advanced analytics dashboard
-
-### Phase 3: Rules Engine 🚧
-- [x] AI service integration (Claude 3.5 Sonnet)
-- [x] Schema analysis and understanding
-- [x] Natural language processing
-- [x] Basic code generation
-- [ ] Advanced TLP API integration
-- [ ] Rule optimization and validation
-
-### Phase 4: Participant Dashboard 📋
-- [x] Participant authentication
-- [ ] Progress visualization
-- [ ] Point balance tracking
-- [ ] Redemption interface
-- [ ] Real-time updates via WebSocket
-
-### Phase 5: AI Recommendations 📋
-- [ ] Campaign performance analytics
-- [ ] AI-driven optimization suggestions
-- [ ] Learning system for campaign improvement
-- [ ] Predictive analytics
-
-### Phase 6: Testing & Deployment 📋
-- [ ] Comprehensive testing suite
-- [ ] Performance optimization
-- [ ] Security audit and penetration testing
-- [ ] Production deployment automation
-- [ ] Monitoring and alerting
-
-### Phase 7: Advanced Features 📋
-- [ ] Multi-tenant architecture
-- [ ] Advanced reporting and analytics
-- [ ] Integration marketplace
-- [ ] Mobile applications
-- [ ] API rate limiting and monetization
+- **Material-UI**: Component library and design system
+- **Prisma**: Database toolkit and ORM
+- **Anthropic**: AI model integration
+- **Pravici**: TLP integration platform
 
 ---
 
-## 🎯 Quick Start Checklist
+**Incentiva.me** - Transforming loyalty campaigns with AI-powered intelligence and real-time engagement.
 
-For developers getting started:
-
-- [ ] Clone repository and install dependencies
-- [ ] Set up environment variables
-- [ ] Start PostgreSQL (Docker or local)
-- [ ] Run database setup
-- [ ] Start development servers
-- [ ] Access application at http://localhost:3001
-- [ ] Login with admin credentials
-- [ ] Create your first campaign
-
-## 📊 System Requirements
-
-### Development
-- **Node.js**: 18.0.0 or higher
-- **npm**: 9.0.0 or higher
-- **Memory**: 4GB RAM minimum
-- **Storage**: 2GB free space
-
-### Production
-- **Node.js**: 18.0.0 or higher
-- **Memory**: 8GB RAM recommended
-- **Storage**: 10GB free space
-- **Database**: PostgreSQL 15 or higher
-- **Redis**: 6.0 or higher (optional)
-
----
-
-**Incentiva** - Empowering loyalty campaigns through AI-driven innovation and modern web technologies.
-
-*Built with ❤️ using React, Node.js, TypeScript, and Docker* 
+*Built with ❤️ for the future of customer loyalty management.* 

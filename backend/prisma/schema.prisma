@@ -37,9 +37,21 @@ model Campaign {
   startDate               DateTime
   endDate                 DateTime
   status                  CampaignStatus @default(DRAFT)
+  
+  // Campaign Goals
+  individualGoal          Decimal? @db.Decimal(15, 2)
+  individualGoalCurrency  String   @default("MXN") // MXN, USD, EUR, etc.
+  overallGoal             Decimal? @db.Decimal(15, 2)
+  overallGoalCurrency     String   @default("MXN")
+  
+  // TLP Configuration
   tlpApiKey               String?
   tlpEndpointUrl          String?
   backendConnectionConfig  Json?
+  
+  // Campaign Rules
+  eligibilityCriteria     String? // Natural language eligibility description
+  
   createdById             String
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
@@ -51,8 +63,26 @@ model Campaign {
   schemas                 CampaignSchema[]
   userCampaigns           UserCampaign[]
   redemptions             CampaignRedemption[]
+  goals                   CampaignGoal[]
 
   @@map("campaigns")
+}
+
+model CampaignGoal {
+  id              String   @id @default(cuid())
+  campaignId      String
+  goalType        GoalType
+  targetValue     Decimal  @db.Decimal(15, 2)
+  currency        String   @default("MXN")
+  description     String?
+  isAchieved      Boolean  @default(false)
+  achievedAt      DateTime?
+  createdAt       DateTime @default(now())
+
+  // Relations
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("campaign_goals")
 }
 
 model CampaignRule {
@@ -79,6 +109,11 @@ model CampaignExecution {
   pointsAllocated Int      @default(0)
   goalAchieved    Boolean  @default(false)
   executionDate   DateTime @default(now())
+  
+  // Execution details
+  transactionAmount Decimal? @db.Decimal(15, 2)
+  transactionCurrency String? @default("MXN")
+  transactionType   String? // "ACCRUAL" or "REDEMPTION"
 
   // Relations
   campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
@@ -107,6 +142,8 @@ model UserCampaign {
   participantId   String? // TLP member ID
   currentPoints   Int      @default(0)
   goalProgress    Decimal  @default(0) @db.Decimal(5, 2) // Percentage
+  isEnrolled      Boolean  @default(true)
+  enrolledAt      DateTime @default(now())
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -123,15 +160,43 @@ model CampaignRedemption {
   campaignId      String
   userId          String
   offerId         String // TLP offer ID
+  offerName       String?
+  offerDescription String?
   pointsRedeemed  Int
   redemptionDate  DateTime @default(now())
   status          RedemptionStatus @default(PENDING)
+  
+  // Redemption details
+  tlpTransactionId String? // TLP transaction reference
 
   // Relations
   campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("campaign_redemptions")
+}
+
+model SystemConfiguration {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  value           String
+  description     String?
+  updatedAt       DateTime @updatedAt
+  updatedBy       String?
+
+  @@map("system_configurations")
+}
+
+model AIConfiguration {
+  id              String   @id @default(cuid())
+  provider        AIProvider
+  modelName       String
+  apiKey          String
+  isActive        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("ai_configurations")
 }
 
 // Enums
@@ -158,4 +223,17 @@ enum RedemptionStatus {
   PENDING
   COMPLETED
   CANCELLED
+}
+
+enum GoalType {
+  INDIVIDUAL
+  OVERALL
+  REGIONAL
+}
+
+enum AIProvider {
+  ANTHROPIC
+  OPENAI
+  GOOGLE
+  AZURE
 } 
