@@ -111,6 +111,9 @@ ANTHROPIC_API_KEY=your_anthropic_api_key_here
 TLP_API_KEY=your_tlp_api_key_here
 TLP_ENDPOINT_URL=https://exata-customer.pravici.io
 JWT_SECRET=your_jwt_secret_here
+
+# Note: When using docker-compose, put the environment variables in the
+# project root file incentiva/.env so both app and rules-engine receive them.
 ```
 
 ### **2. Build and Run**
@@ -400,6 +403,8 @@ docker run -d \
   -p 3002:3002 \
   -e DATABASE_URL=postgresql://... \
   -e ANTHROPIC_API_KEY=... \
+  -e TLP_API_KEY=... \
+  -e TLP_ENDPOINT_URL=https://exata-customer.pravici.io \
   incentiva-rules-engine
 ```
 

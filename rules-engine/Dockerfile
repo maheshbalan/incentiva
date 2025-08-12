@@ -1,4 +1,4 @@
-FROM node:21-alpine
+FROM node:21.7.3-alpine
 
 # Install system dependencies
 RUN apk add --no-cache \
@@ -22,16 +22,30 @@ WORKDIR /app/rules-engine
 RUN npm install
 
 # Copy source code
-COPY shared/ ./shared/
-COPY rules-engine/ ./rules-engine/
+COPY shared/ /app/shared/
+COPY rules-engine/ /app/rules-engine/
+COPY backend/prisma/ /app/rules-engine/prisma/
 
-# Build shared package
-WORKDIR /app/shared
-RUN npm run build
+# Copy TypeScript configuration files (after source to avoid overwriting)
+COPY shared/tsconfig.json /app/shared/
+COPY rules-engine/tsconfig.json /app/rules-engine/
+
+# Copy pre-built shared package (built outside container)
+COPY shared/dist/ /app/shared/dist/
+
+# Debug: List files to see what was copied
+RUN ls -la /app/rules-engine/
+RUN ls -la /app/shared/
+RUN find /app -name "tsconfig.json" -type f
+RUN ls -la /app/rules-engine/src/
+RUN ls -la /app/rules-engine/prisma/
 
 # Build rules engine
 WORKDIR /app/rules-engine
-RUN npm run build
+RUN npx tsc -p tsconfig.json
+
+# Generate Prisma client
+RUN npx prisma generate
 
 # Create logs directory
 RUN mkdir -p /app/logs && \

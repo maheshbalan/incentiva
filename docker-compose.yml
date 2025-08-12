@@ -38,6 +38,8 @@ services:
       JWT_SECRET: your-super-secret-jwt-key-here
       PORT: 3001
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      TLP_API_KEY: ${TLP_API_KEY}
+      TLP_ENDPOINT_URL: ${TLP_ENDPOINT_URL}
     ports:
       - "3001:3001"
     depends_on:
