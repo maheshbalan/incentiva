@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Box,
   Typography,
@@ -46,7 +46,8 @@ import {
   Campaign,
   Group,
   SmartToy,
-  Key
+  Key,
+  PlayArrow
 } from '@mui/icons-material'
 import { useAuth } from '../hooks/useAuth'
 import { AIProvider, SUPPORTED_CURRENCIES } from '@incentiva/shared'
@@ -156,24 +157,73 @@ const AdminPage: React.FC = () => {
     }
   ])
 
-  const [campaigns, setCampaigns] = useState<Campaign[]>([
-    {
-      id: '1',
-      name: 'Premium Line Sales Campaign',
-      status: 'ACTIVE',
-      participantCount: 10,
-      startDate: '2025-01-01',
-      endDate: '2025-06-30'
-    },
-    {
-      id: '2',
-      name: 'Q1 Performance Boost',
-      status: 'DRAFT',
-      participantCount: 5,
-      startDate: '2025-04-01',
-      endDate: '2025-06-30'
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false)
+  const [campaignError, setCampaignError] = useState<string | null>(null)
+
+  // Fetch campaigns from API
+  const fetchCampaigns = async () => {
+    setLoadingCampaigns(true)
+    setCampaignError(null)
+    
+    try {
+      const response = await fetch('/api/campaigns', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const result = await response.json()
+      if (result.success && result.data) {
+        setCampaigns(result.data)
+      } else {
+        throw new Error(result.error || 'Failed to fetch campaigns')
+      }
+    } catch (error) {
+      console.error('Error fetching campaigns:', error)
+      setCampaignError(error instanceof Error ? error.message : 'Failed to fetch campaigns')
+    } finally {
+      setLoadingCampaigns(false)
     }
-  ])
+  }
+
+  // Load campaigns on component mount
+  useEffect(() => {
+    fetchCampaigns()
+  }, [])
+
+  // Campaign execution
+  const handleExecuteCampaign = async (campaign: Campaign) => {
+    try {
+      const response = await fetch(`/api/campaigns/${campaign.id}/execute`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const result = await response.json()
+      if (result.success) {
+        alert(`Campaign "${campaign.name}" execution started successfully!`)
+        // Refresh campaigns to show updated status
+        fetchCampaigns()
+      } else {
+        throw new Error(result.error || 'Failed to execute campaign')
+      }
+    } catch (error) {
+      console.error('Error executing campaign:', error)
+      alert(`Failed to execute campaign: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
 
   const [aiModels, setAIModels] = useState<AIModelConfig[]>([
     {
@@ -477,9 +527,25 @@ const AdminPage: React.FC = () => {
       <TabPanel value={tabValue} index={1}>
         <Card>
           <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Campaign Management
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6">
+                Campaign Management
+              </Typography>
+              <Button
+                variant="outlined"
+                startIcon={<Refresh />}
+                onClick={fetchCampaigns}
+                disabled={loadingCampaigns}
+              >
+                Refresh Campaigns
+              </Button>
+            </Box>
+            
+            {campaignError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {campaignError}
+              </Alert>
+            )}
             
             <TableContainer component={Paper} sx={{ mt: 2 }}>
               <Table>
@@ -493,36 +559,61 @@ const AdminPage: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {campaigns.map((campaign) => (
-                    <TableRow key={campaign.id}>
-                      <TableCell>{campaign.name}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={campaign.status}
-                          color={getStatusColor(campaign.status) as any}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Badge badgeContent={campaign.participantCount} color="primary">
-                          <Group />
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {campaign.startDate} - {campaign.endDate}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          startIcon={<Group />}
-                          onClick={() => handleManageParticipants(campaign)}
-                        >
-                          Manage Participants
-                        </Button>
+                  {loadingCampaigns ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center">Loading campaigns...</TableCell>
+                    </TableRow>
+                  ) : campaignError ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center" color="error">
+                        {campaignError}
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : campaigns.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center">No campaigns found.</TableCell>
+                    </TableRow>
+                  ) : (
+                    campaigns.map((campaign) => (
+                      <TableRow key={campaign.id}>
+                        <TableCell>{campaign.name}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={campaign.status}
+                            color={getStatusColor(campaign.status) as any}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Badge badgeContent={campaign.participantCount} color="primary">
+                            <Group />
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {campaign.startDate} - {campaign.endDate}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<Group />}
+                            onClick={() => handleManageParticipants(campaign)}
+                          >
+                            Manage Participants
+                          </Button>
+                          {campaign.status === 'DRAFT' && (
+                            <IconButton
+                              onClick={() => handleExecuteCampaign(campaign)}
+                              color="success"
+                              title="Execute Campaign"
+                            >
+                              <PlayArrow />
+                            </IconButton>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>

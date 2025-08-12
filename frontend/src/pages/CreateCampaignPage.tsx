@@ -397,16 +397,16 @@ const CreateCampaignPage: React.FC = () => {
               <Controller
                 name="pointsPerDollar"
                 control={control}
-                rules={{ required: 'Points per dollar is required', min: { value: 0.01, message: 'Must be greater than 0' } }}
+                rules={{ required: 'Points per value is required', min: { value: 0.01, message: 'Must be greater than 0' } }}
                 render={({ field }) => (
                   <TextField
                     {...field}
                     fullWidth
-                    label="Points per Dollar"
+                    label="Points per Value"
                     type="number"
                     inputProps={{ step: 0.01, min: 0.01 }}
                     error={!!errors.pointsPerDollar}
-                    helperText={errors.pointsPerDollar?.message || "How many points earned per dollar spent"}
+                    helperText={errors.pointsPerDollar?.message || "How many points earned per unit of value"}
                   />
                 )}
               />
@@ -578,12 +578,6 @@ const CreateCampaignPage: React.FC = () => {
               <Controller
                 name="tlpEndpointUrl"
                 control={control}
-                rules={{ 
-                  pattern: {
-                    value: /^https?:\/\/.+/,
-                    message: 'Must be a valid HTTP/HTTPS URL'
-                  }
-                }}
                 render={({ field }) => (
                   <TextField
                     {...field}
