@@ -16,6 +16,12 @@ router.post('/', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest
       description,
       startDate,
       endDate,
+      individualGoal,
+      individualGoalCurrency,
+      overallGoal,
+      overallGoalCurrency,
+      totalPointsMinted,
+      eligibilityCriteria,
       tlpApiKey,
       tlpEndpointUrl,
       backendConnectionConfig
@@ -34,6 +40,12 @@ router.post('/', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest
         description,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
+        individualGoal: individualGoal ? parseFloat(individualGoal) : null,
+        individualGoalCurrency,
+        overallGoal: overallGoal ? parseFloat(overallGoal) : null,
+        overallGoalCurrency,
+        totalPointsMinted: totalPointsMinted ? parseFloat(totalPointsMinted) : null,
+        eligibilityCriteria,
         tlpApiKey,
         tlpEndpointUrl,
         backendConnectionConfig,
@@ -62,6 +74,38 @@ router.post('/', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest
     res.status(500).json({
       success: false,
       error: 'Failed to create campaign'
+    });
+  }
+});
+
+// Get all campaigns (for campaigns page)
+router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const campaigns = await prisma.campaign.findMany({
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    res.json({
+      success: true,
+      data: campaigns
+    });
+  } catch (error) {
+    logger.error('Failed to fetch campaigns:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch campaigns'
     });
   }
 });
@@ -130,7 +174,7 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
   }
 });
 
-// Get campaign details
+// Get campaign by ID
 router.get('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -146,24 +190,7 @@ router.get('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Respo
             lastName: true
           }
         },
-        rules: true,
-        schemas: true,
-        userCampaigns: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true
-              }
-            }
-          }
-        },
-        executions: {
-          orderBy: { executionDate: 'desc' },
-          take: 10
-        }
+        rules: true
       }
     });
 
@@ -179,10 +206,53 @@ router.get('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Respo
       data: campaign
     });
   } catch (error) {
-    logger.error('Campaign details failed:', error);
+    logger.error('Failed to fetch campaign:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to get campaign details'
+      error: 'Failed to fetch campaign'
+    });
+  }
+});
+
+// Update campaign status
+router.patch('/:id/status', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+
+    const campaign = await prisma.campaign.update({
+      where: { id },
+      data: { status },
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
+    });
+
+    logger.info('Campaign status updated', { campaignId: id, status });
+
+    res.json({
+      success: true,
+      data: campaign
+    });
+  } catch (error) {
+    logger.error('Failed to update campaign status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update campaign status'
     });
   }
 });

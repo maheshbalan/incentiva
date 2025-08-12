@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Box,
   Typography,
@@ -6,13 +6,99 @@ import {
   Card,
   CardContent,
   Grid,
-  Chip
+  Chip,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+  Tooltip,
+  Alert
 } from '@mui/material'
-import { Add } from '@mui/icons-material'
+import { Add, Visibility, Edit, PlayArrow, People, Receipt } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
+import { CampaignStatus } from '@incentiva/shared'
+
+interface Campaign {
+  id: string
+  name: string
+  description?: string
+  startDate: string
+  endDate: string
+  status: CampaignStatus
+  individualGoal?: number
+  overallGoal?: number
+  createdAt: string
+}
 
 const CampaignsPage: React.FC = () => {
   const navigate = useNavigate()
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchCampaigns()
+  }, [])
+
+  const fetchCampaigns = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/campaigns')
+      if (!response.ok) {
+        throw new Error('Failed to fetch campaigns')
+      }
+      const data = await response.json()
+      setCampaigns(data.data || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch campaigns')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getStatusColor = (status: CampaignStatus) => {
+    switch (status) {
+      case CampaignStatus.DRAFT:
+        return 'default'
+      case CampaignStatus.APPROVED:
+        return 'warning'
+      case CampaignStatus.ACTIVE:
+        return 'success'
+      case CampaignStatus.COMPLETED:
+        return 'info'
+      case CampaignStatus.CANCELLED:
+        return 'error'
+      default:
+        return 'default'
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString()
+  }
+
+  const formatCurrency = (amount?: number) => {
+    if (!amount) return 'N/A'
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(amount)
+  }
+
+  if (loading) {
+    return (
+      <Box>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Campaigns
+        </Typography>
+        <Typography>Loading campaigns...</Typography>
+      </Box>
+    )
+  }
 
   return (
     <Box>
@@ -29,24 +115,139 @@ const CampaignsPage: React.FC = () => {
         </Button>
       </Box>
 
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Manage your loyalty campaigns and track their performance.
-      </Typography>
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
 
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Campaign Management
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                This page will display a list of all campaigns with their status, progress, and management options.
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      {campaigns.length === 0 ? (
+        <Card>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              No Campaigns Found
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              You haven't created any campaigns yet. Start by creating your first campaign.
+            </Typography>
+            <Button
+              variant="outlined"
+              startIcon={<Add />}
+              onClick={() => navigate('/campaigns/create')}
+            >
+              Create Your First Campaign
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Campaign Name</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Period</TableCell>
+                <TableCell>Individual Goal</TableCell>
+                <TableCell>Overall Goal</TableCell>
+                <TableCell>Created</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {campaigns.map((campaign) => (
+                <TableRow key={campaign.id}>
+                  <TableCell>
+                    <Box>
+                      <Typography variant="subtitle2" fontWeight="bold">
+                        {campaign.name}
+                      </Typography>
+                      {campaign.description && (
+                        <Typography variant="body2" color="text.secondary">
+                          {campaign.description}
+                        </Typography>
+                      )}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={campaign.status} 
+                      color={getStatusColor(campaign.status) as any}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {formatDate(campaign.startDate)} - {formatDate(campaign.endDate)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {formatCurrency(campaign.individualGoal)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {formatCurrency(campaign.overallGoal)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {formatDate(campaign.createdAt)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Tooltip title="View Campaign">
+                        <IconButton
+                          size="small"
+                          onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                        >
+                          <Visibility />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Edit Campaign">
+                        <IconButton
+                          size="small"
+                          onClick={() => navigate(`/campaigns/${campaign.id}/edit`)}
+                        >
+                          <Edit />
+                        </IconButton>
+                      </Tooltip>
+                      {campaign.status === CampaignStatus.APPROVED && (
+                        <Tooltip title="Execute Campaign">
+                          <IconButton
+                            size="small"
+                            color="success"
+                            onClick={() => navigate(`/campaigns/${campaign.id}/execute`)}
+                          >
+                            <PlayArrow />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      <Tooltip title="Manage Participants">
+                        <IconButton
+                          size="small"
+                          onClick={() => navigate(`/campaigns/${campaign.id}/participants`)}
+                        >
+                          <People />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="View Transactions">
+                        <IconButton
+                          size="small"
+                          onClick={() => navigate(`/campaigns/${campaign.id}/transactions`)}
+                        >
+                          <Receipt />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
     </Box>
   )
 }

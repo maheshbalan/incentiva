@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Box,
   Button,
@@ -29,7 +29,7 @@ const CreateCampaignPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
-  const { control, handleSubmit, watch, formState: { errors, isValid } } = useForm<CampaignFormData>({
+  const { control, handleSubmit, watch, setValue, formState: { errors, isValid } } = useForm<CampaignFormData>({
     defaultValues: {
       name: '',
       description: '',
@@ -41,12 +41,13 @@ const CreateCampaignPage: React.FC = () => {
       overallGoalCurrency: 'MXN',
       eligibilityCriteria: '',
       tlpApiKey: '',
-      tlpEndpointUrl: '',
+      tlpEndpointUrl: 'https://exata-customer.pravici.io', // Set default TLP endpoint
       pointsPerDollar: 1, // Default for points per dollar
       pointValue: 1, // Default for point value
       pointValueCurrency: 'MXN', // Default for point value currency
       individualGoalBonus: 0, // Default for individual goal bonus
       overallGoalBonus: 0, // Default for overall goal bonus
+      totalPointsMinted: 0, // Default for total points minted
       rewards: '', // Default for rewards description
       databaseType: 'postgres', // Default for database type
       databaseHost: 'localhost', // Default for database host
@@ -57,6 +58,12 @@ const CreateCampaignPage: React.FC = () => {
     },
     mode: 'onBlur'
   })
+
+  // Load TLP configuration from environment on component mount
+  useEffect(() => {
+    // Set TLP endpoint from environment variable (this would be loaded from backend)
+    setValue('tlpEndpointUrl', 'https://exata-customer.pravici.io')
+  }, [setValue])
 
   const watchedValues = watch()
 
@@ -490,6 +497,25 @@ const CreateCampaignPage: React.FC = () => {
 
             <Grid item xs={12}>
               <Controller
+                name="totalPointsMinted"
+                control={control}
+                rules={{ min: { value: 0, message: 'Must be 0 or greater' } }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Total Points Minted for Campaign"
+                    type="number"
+                    inputProps={{ min: 0 }}
+                    error={!!errors.totalPointsMinted}
+                    helperText={errors.totalPointsMinted?.message || "Total points minted by the campaign"}
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Controller
                 name="rewards"
                 control={control}
                 rules={{ required: 'Rewards description is required' }}
@@ -802,6 +828,11 @@ const CreateCampaignPage: React.FC = () => {
                   {watchedValues.overallGoal && (
                     <Typography variant="body2" sx={{ mb: 2 }}>
                       Overall: {watchedValues.overallGoal.toLocaleString()} {watchedValues.overallGoalCurrency}
+                    </Typography>
+                  )}
+                  {watchedValues.totalPointsMinted > 0 && (
+                    <Typography variant="body2" sx={{ mb: 2 }}>
+                      Total Points Minted: {watchedValues.totalPointsMinted.toLocaleString()}
                     </Typography>
                   )}
 

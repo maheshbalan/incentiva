@@ -43,6 +43,7 @@ model Campaign {
   individualGoalCurrency  String   @default("MXN") // MXN, USD, EUR, etc.
   overallGoal             Decimal? @db.Decimal(15, 2)
   overallGoalCurrency     String   @default("MXN")
+  totalPointsMinted       Decimal? @db.Decimal(15, 2) // Total points minted for the campaign
   
   // TLP Configuration
   tlpApiKey               String?
