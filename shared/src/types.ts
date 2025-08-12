@@ -47,6 +47,44 @@ export enum AIProvider {
   AZURE = 'AZURE'
 }
 
+export enum TransactionProcessingStatus {
+  PENDING = 'PENDING',
+  PROCESSING = 'PROCESSING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  RETRY = 'RETRY'
+}
+
+export enum RulesEngineJobType {
+  INITIAL_DATA_LOAD = 'INITIAL_DATA_LOAD',
+  INCREMENTAL_UPDATE = 'INCREMENTAL_UPDATE',
+  RULES_PROCESSING = 'RULES_PROCESSING',
+  TLP_SYNC = 'TLP_SYNC'
+}
+
+export enum RulesEngineJobStatus {
+  PENDING = 'PENDING',
+  RUNNING = 'RUNNING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED',
+  SCHEDULED = 'SCHEDULED'
+}
+
+export enum RulesEngineExecutionType {
+  DATA_EXTRACTION = 'DATA_EXTRACTION',
+  RULES_APPLICATION = 'RULES_APPLICATION',
+  TLP_INTEGRATION = 'TLP_INTEGRATION',
+  FULL_PROCESSING = 'FULL_PROCESSING'
+}
+
+export enum RulesEngineExecutionStatus {
+  RUNNING = 'RUNNING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED'
+}
+
 // ============================================================================
 // CORE INTERFACES
 // ============================================================================
@@ -260,15 +298,188 @@ export interface TLPTransaction {
   metadata?: Record<string, any>
 }
 
-export interface TLPMember {
-  id?: string
-  externalId: string
-  firstName: string
-  lastName: string
-  email: string
-  phone?: string
-  dateOfBirth?: string
-  metadata?: Record<string, any>
+// ============================================================================
+// RULES ENGINE INTERFACES
+// ============================================================================
+
+export interface CampaignTransaction {
+  id: string
+  campaignId: string
+  externalId?: string
+  externalType?: string
+  
+  // Transaction data (JSON structure from customer system)
+  transactionData: any
+  processedData?: any
+  
+  // Rules engine processing
+  rulesApplied: boolean
+  pointsAllocated: number
+  processingStatus: TransactionProcessingStatus
+  
+  // TLP integration
+  tlpAccrualPayload?: any
+  tlpTransactionId?: string
+  tlpResponse?: any
+  
+  // Processing metadata
+  processedAt?: string
+  errorMessage?: string
+  retryCount: number
+  maxRetries: number
+  
+  createdAt: string
+  updatedAt: string
+}
+
+export interface RulesEngineJob {
+  id: string
+  campaignId: string
+  jobType: RulesEngineJobType
+  status: RulesEngineJobStatus
+  
+  // Job configuration
+  schedule?: string
+  isRecurring: boolean
+  lastRunAt?: string
+  nextRunAt?: string
+  
+  // Data source configuration
+  dataSourceConfig: any
+  
+  // Processing configuration
+  batchSize: number
+  maxConcurrency: number
+  
+  // Execution tracking
+  totalRecords: number
+  processedRecords: number
+  failedRecords: number
+  
+  // Job metadata
+  startedAt?: string
+  completedAt?: string
+  errorMessage?: string
+  
+  createdAt: string
+  updatedAt: string
+}
+
+export interface RulesEngineExecution {
+  id: string
+  jobId: string
+  campaignId: string
+  
+  // Execution details
+  executionType: RulesEngineExecutionType
+  status: RulesEngineExecutionStatus
+  
+  // Data processing
+  recordsProcessed: number
+  recordsSucceeded: number
+  recordsFailed: number
+  
+  // Performance metrics
+  startTime: string
+  endTime?: string
+  durationMs?: number
+  
+  // Error handling
+  errorMessage?: string
+  stackTrace?: string
+  
+  // Logs and metadata
+  executionLog?: any
+  
+  createdAt: string
+  updatedAt: string
+}
+
+// ============================================================================
+// RULES ENGINE DATA STRUCTURES
+// ============================================================================
+
+export interface CustomerDatabaseSchema {
+  tables: TableInfo[]
+  relationships: RelationshipInfo[]
+  understandingScore: number
+  feedback: string
+}
+
+export interface TableInfo {
+  name: string
+  description?: string
+  fields: FieldInfo[]
+  primaryKey: string
+  indexes: string[]
+  estimatedRowCount: number
+}
+
+export interface FieldInfo {
+  name: string
+  type: string
+  nullable: boolean
+  description?: string
+  sampleValues?: any[]
+  isForeignKey: boolean
+  referencedTable?: string
+  referencedField?: string
+}
+
+export interface RelationshipInfo {
+  fromTable: string
+  fromField: string
+  toTable: string
+  toField: string
+  relationshipType: 'one-to-one' | 'one-to-many' | 'many-to-many'
+  description?: string
+}
+
+export interface GeneratedRules {
+  campaignId: string
+  schema: CustomerDatabaseSchema
+  rules: {
+    goalRules: GoalRule[]
+    eligibilityRules: EligibilityRule[]
+    prizeRules: PrizeRule[]
+  }
+  generatedCode: GeneratedCode
+  understandingScore: number
+  feedback: string
+}
+
+export interface GoalRule {
+  type: 'INDIVIDUAL' | 'OVERALL' | 'REGIONAL'
+  targetValue: number
+  currency: string
+  description: string
+  calculationLogic: string
+  applicableTables: string[]
+  applicableFields: string[]
+}
+
+export interface EligibilityRule {
+  description: string
+  conditions: string[]
+  applicableTables: string[]
+  applicableFields: string[]
+  exclusionCriteria: string[]
+}
+
+export interface PrizeRule {
+  description: string
+  pointValue: number
+  conditions: string[]
+  applicableTables: string[]
+  applicableFields: string[]
+}
+
+export interface GeneratedCode {
+  dataExtractionQuery: string
+  rulesApplicationLogic: string
+  tlpIntegrationCode: string
+  microserviceCode: string
+  testCode: string
 }
 
 // ============================================================================
@@ -283,63 +494,11 @@ export interface SchemaAnalysis {
   requiredFields: string[]
 }
 
-export interface TableInfo {
-  name: string
-  fields: FieldInfo[]
-  primaryKey: string
-  foreignKeys: ForeignKeyInfo[]
-}
 
-export interface FieldInfo {
-  name: string
-  type: string
-  nullable: boolean
-  description?: string
-}
 
-export interface RelationshipInfo {
-  fromTable: string
-  fromField: string
-  toTable: string
-  toField: string
-  relationshipType: 'one-to-one' | 'one-to-many' | 'many-to-many'
-}
 
-export interface ForeignKeyInfo {
-  field: string
-  referencesTable: string
-  referencesField: string
-}
 
-export interface GeneratedRules {
-  goals: GoalRule[]
-  eligibility: EligibilityRule[]
-  prizes: PrizeRule[]
-  generatedCode: string
-  validationErrors: string[]
-}
 
-export interface GoalRule {
-  type: 'individual' | 'regional' | 'team'
-  target: number
-  currency: string
-  description: string
-  calculationLogic: string
-}
-
-export interface EligibilityRule {
-  condition: string
-  description: string
-  validationLogic: string
-}
-
-export interface PrizeRule {
-  name: string
-  description: string
-  pointCost: number
-  imageUrl?: string
-  redemptionCode?: string
-}
 
 export interface GeneratedCode {
   typescript: string

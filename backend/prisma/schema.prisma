@@ -64,6 +64,8 @@ model Campaign {
   userCampaigns           UserCampaign[]
   redemptions             CampaignRedemption[]
   goals                   CampaignGoal[]
+  transactions            CampaignTransaction[]
+  rulesEngineJobs        RulesEngineJob[]
 
   @@map("campaigns")
 }
@@ -176,6 +178,116 @@ model CampaignRedemption {
   @@map("campaign_redemptions")
 }
 
+model CampaignTransaction {
+  id              String   @id @default(cuid())
+  campaignId      String
+  externalId      String? // Original invoice/order ID from customer system
+  externalType    String? // "INVOICE", "ORDER", etc.
+  
+  // Transaction data (JSON structure from customer system)
+  transactionData Json     // Raw transaction data from customer database
+  processedData   Json?    // Processed/transformed data after rules application
+  
+  // Rules engine processing
+  rulesApplied    Boolean  @default(false)
+  pointsAllocated Int      @default(0)
+  processingStatus TransactionProcessingStatus @default(PENDING)
+  
+  // TLP integration
+  tlpAccrualPayload Json? // TLP API request payload
+  tlpTransactionId String? // TLP transaction reference
+  tlpResponse      Json?   // TLP API response
+  
+  // Processing metadata
+  processedAt     DateTime?
+  errorMessage    String?
+  retryCount      Int      @default(0)
+  maxRetries      Int      @default(3)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("campaign_transactions")
+}
+
+model RulesEngineJob {
+  id              String   @id @default(cuid())
+  campaignId      String
+  jobType         RulesEngineJobType
+  status          RulesEngineJobStatus @default(PENDING)
+  
+  // Job configuration
+  schedule        String?  // Cron expression for recurring jobs
+  isRecurring     Boolean  @default(false)
+  lastRunAt       DateTime?
+  nextRunAt       DateTime?
+  
+  // Data source configuration
+  dataSourceConfig Json    // Database connection and query configuration
+  
+  // Processing configuration
+  batchSize       Int      @default(1000)
+  maxConcurrency  Int      @default(5)
+  
+  // Execution tracking
+  totalRecords    Int      @default(0)
+  processedRecords Int     @default(0)
+  failedRecords   Int      @default(0)
+  
+  // Job metadata
+  startedAt       DateTime?
+  completedAt     DateTime?
+  errorMessage    String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  executions     RulesEngineExecution[]
+
+  @@map("rules_engine_jobs")
+}
+
+model RulesEngineExecution {
+  id              String   @id @default(cuid())
+  jobId           String
+  campaignId      String
+  
+  // Execution details
+  executionType   RulesEngineExecutionType
+  status          RulesEngineExecutionStatus @default(RUNNING)
+  
+  // Data processing
+  recordsProcessed Int     @default(0)
+  recordsSucceeded Int     @default(0)
+  recordsFailed    Int     @default(0)
+  
+  // Performance metrics
+  startTime       DateTime @default(now())
+  endTime         DateTime?
+  durationMs      Int?
+  
+  // Error handling
+  errorMessage    String?
+  stackTrace      String?
+  
+  // Logs and metadata
+  executionLog    Json?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  job            RulesEngineJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  campaign       Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("rules_engine_executions")
+}
+
 model SystemConfiguration {
   id              String   @id @default(cuid())
   key             String   @unique
@@ -236,4 +348,42 @@ enum AIProvider {
   OPENAI
   GOOGLE
   AZURE
+}
+
+enum TransactionProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  RETRY
+}
+
+enum RulesEngineJobType {
+  INITIAL_DATA_LOAD
+  INCREMENTAL_UPDATE
+  RULES_PROCESSING
+  TLP_SYNC
+}
+
+enum RulesEngineJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+  SCHEDULED
+}
+
+enum RulesEngineExecutionType {
+  DATA_EXTRACTION
+  RULES_APPLICATION
+  TLP_INTEGRATION
+  FULL_PROCESSING
+}
+
+enum RulesEngineExecutionStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
 } 
