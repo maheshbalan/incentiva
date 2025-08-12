@@ -1,15 +1,13 @@
-# 🚀 Incentiva Rules Engine - AI-Powered Loyalty Campaign Processing
+# Rules Engine - Complete Transaction Processing System
 
-## 📋 Overview
+## 🎯 Overview
 
-The Incentiva Rules Engine is a sophisticated microservice designed to process loyalty campaign transactions using AI-generated rules and code. It operates as a separate container from the main Incentiva application, providing scalable, high-performance campaign execution capabilities.
+The Incentiva Rules Engine is a **complete transaction processing system** that transforms natural language business rules into automated workflows. It automatically generates database schemas, executable JSON rules, and TLP API integrations to process customer transactions and allocate loyalty points in real-time.
 
-## 🏗️ Architecture
+## 🏗️ Container Structure
 
-### **Container Structure**
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Incentiva System                        │
+                    Incentiva System
 ├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────────────────────────┐  ┌─────────────────┐ │
 │  │        Backend + Frontend       │  │  Rules Engine   │ │
@@ -29,472 +27,777 @@ The Incentiva Rules Engine is a sophisticated microservice designed to process l
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### **Key Components**
+## 🚀 Complete Transaction Processing Flow
 
-1. **Rules Engine Container** - Dedicated microservice for transaction processing
-2. **AI Integration** - Anthropic Claude 3.5 Sonnet for rule generation and code creation
-3. **Job Management** - Scheduled and on-demand campaign execution
-4. **Transaction Processing** - Batch processing with retry mechanisms
-5. **TLP Integration** - Pravici TLP API integration for point allocation
+### **Phase 1: Natural Language → Executable System**
+1. **Input**: Admin writes rules like "Premium line products get 1 point per 1000 MXN"
+2. **AI Analysis**: Anthropic analyzes rules and customer database schema
+3. **Output**: Complete transaction processing system with:
+   - Transaction table schema
+   - Executable JSON rules
+   - Data extraction queries
+   - TLP integration code
 
-## 🎯 Core Features
+### **Phase 2: Data Extraction & Transformation**
+1. **One-Time Load**: Extract historical data from customer database
+2. **Data Transformation**: Apply schema mappings and field transformations
+3. **Transaction Creation**: Populate transaction table with JSON data
+4. **Incremental Scheduling**: Set up recurring data extraction
 
-### **1. AI-Powered Rule Generation**
-- **Natural Language Processing**: Converts English/Portuguese/Spanish campaign descriptions to executable rules
-- **Schema Analysis**: Automatically analyzes customer database schemas
-- **Code Generation**: Creates TypeScript microservices for campaign execution
-- **Multi-Language Support**: Handles multiple languages for international campaigns
+### **Phase 3: Runtime Rule Execution**
+1. **Rule Parsing**: Parse JSON rules at runtime
+2. **Transaction Processing**: Evaluate each transaction against rules
+3. **Point Calculation**: Calculate loyalty points based on rules
+4. **API Generation**: Create TLP API calls for point allocation
 
-### **2. Intelligent Data Processing**
-- **Schema Mapping**: Maps campaign rules to customer database structures
-- **Data Extraction**: Efficient extraction with pagination and performance optimization
-- **Batch Processing**: Configurable batch sizes and concurrency controls
-- **Error Handling**: Comprehensive retry mechanisms and error logging
-
-### **3. Campaign Execution Engine**
-- **Scheduled Jobs**: Cron-based scheduling for recurring campaigns
-- **Real-time Processing**: Immediate execution for urgent campaigns
-- **Progress Tracking**: Real-time monitoring of execution progress
-- **Performance Metrics**: Detailed analytics and performance insights
-
-### **4. TLP Integration**
-- **Point Allocation**: Automated point calculation and allocation
-- **Transaction Recording**: Complete audit trail of all TLP operations
-- **API Management**: Secure API key management and endpoint configuration
-- **Error Recovery**: Automatic retry and recovery for failed TLP operations
+### **Phase 4: TLP Integration & Execution**
+1. **Point Allocation**: Execute TLP API calls to allocate points
+2. **Member Creation**: Create TLP members for campaign participants
+3. **Offer Generation**: Create accrual and redemption offers
+4. **Status Tracking**: Monitor API call success/failure
 
 ## 🔧 Technical Implementation
 
-### **Technology Stack**
-- **Runtime**: Node.js 21 with TypeScript
-- **Framework**: Express.js with middleware architecture
-- **Database**: PostgreSQL with Prisma ORM
-- **AI Integration**: Anthropic Claude 3.5 Sonnet API
-- **Authentication**: JWT-based authentication with role-based access
-- **Logging**: Winston-based structured logging
-- **Containerization**: Docker with health checks and monitoring
+### **Core Services**
 
-### **Service Architecture**
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Rules Engine Service                     │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
-│  │   Controllers   │  │     Services    │  │  Middleware │ │
-│  │                 │  │                 │  │             │ │
-│  │ • Rules Engine  │  │ • AI Service    │  │ • Auth      │ │
-│  │ • Jobs          │  │ • Job Service   │  │ • Error     │ │
-│  │ • Transactions  │  │ • Transaction   │  │ • Logging   │ │
-│  │ • Health        │  │ • Data Extract  │  │             │ │
-│  └─────────────────┘  └─────────────────┘  └─────────────┘ │
-│           │                    │                    │       │
-│           └────────────────────┼────────────────────┘       │
-│                                │                            │
-│                    ┌─────────────────┐                      │
-│                    │   Prisma ORM    │                      │
-│                    │   PostgreSQL    │                      │
-│                    └─────────────────┘                      │
-└─────────────────────────────────────────────────────────────┘
+#### **1. Enhanced AI Service (`aiService.ts`)**
+```typescript
+// Generates complete transaction processing system
+const result = await aiService.generateTransactionSchemaAndRules(
+  campaignId,
+  naturalLanguageRules,
+  databaseSchema
+);
+
+// Returns:
+// - transactionSchema: Complete table structure
+// - ruleSet: Executable JSON rules
+// - dataExtractionQueries: SQL for data extraction
 ```
 
-## 🚀 Getting Started
+**Key Capabilities:**
+- **Schema Generation**: Creates transaction table schemas with field mappings
+- **Rule Generation**: Converts natural language to executable JSON rules
+- **Query Generation**: Creates SQL for one-time and incremental data loads
+- **TLP Integration**: Generates TLP API integration code
 
-### **Prerequisites**
-- Docker and Docker Compose
-- Node.js 21+ (for local development)
-- PostgreSQL database
-- Anthropic API key
+#### **2. Data Extraction Service (`dataExtractionService.ts`)**
+```typescript
+// One-time data load
+await dataExtractionService.executeOneTimeLoad(
+  campaignId,
+  extractionQueries,
+  customerDbConnection,
+  transactionSchema
+);
 
-### **1. Environment Setup**
-```bash
-# Copy environment template
-cp .env.example .env
-
-# Configure environment variables
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-TLP_API_KEY=your_tlp_api_key_here
-TLP_ENDPOINT_URL=https://exata-customer.pravici.io
-JWT_SECRET=your_jwt_secret_here
-
-# Note: When using docker-compose, put the environment variables in the
-# project root file incentiva/.env so both app and rules-engine receive them.
+// Incremental data load
+await dataExtractionService.executeIncrementalLoad(
+  campaignId,
+  extractionQueries,
+  customerDbConnection,
+  transactionSchema
+);
 ```
 
-### **2. Build and Run**
-```bash
-# Build all containers
-docker-compose up --build -d
+**Key Capabilities:**
+- **Database Connection**: Connects to customer databases (PostgreSQL, MySQL, etc.)
+- **Query Execution**: Executes AI-generated SQL queries
+- **Data Transformation**: Applies schema mappings and transformations
+- **Transaction Creation**: Populates transaction table with JSON data
+- **Scheduling**: Sets up recurring incremental data loads
 
-# Check container status
-docker-compose ps
+#### **3. Runtime Rule Processing Service (`rulesProcessingService.ts`)**
+```typescript
+// Process transactions with JSON rules
+const rulesProcessor = new RulesProcessingService(ruleSet);
+const result = await rulesProcessor.processTransaction(transaction);
 
-# View logs
-docker-compose logs rules-engine -f
+// Result includes:
+// - Points allocated
+// - Rules evaluated
+// - Accrual API calls generated
 ```
 
-### **3. Health Check**
-```bash
-# Check rules engine health
-curl http://localhost:3002/health
+**Key Capabilities:**
+- **Rule Parsing**: Parses JSON rules at runtime
+- **Condition Evaluation**: Evaluates complex rule conditions
+- **Point Calculation**: Calculates points based on rule calculations
+- **API Generation**: Generates TLP API calls for point allocation
 
-# Detailed health information
-curl http://localhost:3002/health/detailed
+### **Data Flow Architecture**
+
+```
+Natural Language Rules
+         ↓
+   AI Service (Anthropic)
+         ↓
+┌─────────────────────────────────┐
+│ Transaction Schema + JSON Rules │
+│ + Data Extraction Queries      │
+└─────────────────────────────────┘
+         ↓
+   Data Extraction Service
+         ↓
+┌─────────────────────────────────┐
+│ Transaction Table (JSON Data)  │
+└─────────────────────────────────┘
+         ↓
+   Runtime Rule Processing
+         ↓
+┌─────────────────────────────────┐
+│ TLP API Calls + Point Results  │
+└─────────────────────────────────┘
+         ↓
+   TLP Integration Service
+         ↓
+   Point Allocation Complete
 ```
 
-## 📊 API Endpoints
+## 📊 Generated Artifacts
 
-### **Rules Engine API**
-```bash
-# Generate campaign rules
-POST /api/rules-engine/generate-rules
+### **1. Transaction JSON Schema**
+```json
 {
-  "campaignId": "campaign_id",
-  "naturalLanguageRules": "Campaign description in natural language",
-  "databaseSchema": "optional_schema_analysis"
+  "tableName": "campaign_transactions",
+  "description": "Transaction table for campaign processing",
+  "fields": [
+    {
+      "name": "orderId",
+      "type": "string",
+      "required": true,
+      "description": "Customer order identifier",
+      "sourceField": "id",
+      "transformation": null,
+      "validation": "non-empty string"
+    },
+    {
+      "name": "productLine",
+      "type": "string", 
+      "required": true,
+      "description": "Product line category",
+      "sourceField": "product_category",
+      "transformation": "toUpperCase",
+      "validation": "one of: Premium, Standard, Economy"
+    },
+    {
+      "name": "orderAmount",
+      "type": "decimal",
+      "required": true,
+      "description": "Order total amount",
+      "sourceField": "total_amount",
+      "transformation": "parseFloat",
+      "validation": "positive number"
+    }
+  ],
+  "indexes": ["idx_campaign_id", "idx_external_id", "idx_status"],
+  "constraints": ["fk_campaign_id", "chk_positive_amount"]
+}
+```
+
+### **2. Executable JSON Rules**
+```json
+{
+  "campaignId": "campaign_123",
+  "version": "1.0",
+  "rules": {
+    "eligibility": [
+      {
+        "id": "rule_1",
+        "name": "Premium Line Eligibility",
+        "description": "Only Premium line products qualify",
+        "condition": {
+          "type": "fieldComparison",
+          "field": "productLine",
+          "operator": "equals",
+          "value": "Premium"
+        },
+        "priority": 1,
+        "enabled": true
+      }
+    ],
+    "accrual": [
+      {
+        "id": "accrual_1",
+        "name": "Points per MXN",
+        "description": "1 point per 1000 MXN spent",
+        "condition": {
+          "type": "fieldComparison",
+          "field": "orderStatus",
+          "operator": "equals",
+          "value": "completed"
+        },
+        "calculation": {
+          "type": "mathematical",
+          "formula": "orderAmount * 0.001",
+          "fields": ["orderAmount"],
+          "multiplier": 0.001,
+          "rounding": "floor"
+        },
+        "priority": 1,
+        "enabled": true
+      }
+    ],
+    "bonus": [
+      {
+        "id": "bonus_1",
+        "name": "Individual Goal Bonus",
+        "description": "Bonus points for reaching individual goal",
+        "condition": {
+          "type": "aggregate",
+          "aggregation": "sum",
+          "field": "orderAmount",
+          "operator": "gte",
+          "value": 200000
+        },
+        "calculation": {
+          "type": "fixed",
+          "points": 50000
+        },
+        "priority": 2,
+        "enabled": true
+      }
+    ]
+  }
+}
+```
+
+### **3. Data Extraction Queries**
+```sql
+-- One-time load
+SELECT 
+  o.id as orderId,
+  o.customer_id as customerId,
+  o.total_amount as orderAmount,
+  oi.product_category as productLine,
+  o.created_at as orderDate,
+  o.status as orderStatus
+FROM orders o 
+JOIN order_items oi ON o.id = oi.order_id 
+WHERE o.created_at BETWEEN '2024-01-01' AND '2024-12-31' 
+  AND oi.product_category = 'Premium'
+
+-- Incremental load
+SELECT 
+  o.id as orderId,
+  o.customer_id as customerId,
+  o.total_amount as orderAmount,
+  oi.product_category as productLine,
+  o.created_at as orderDate,
+  o.status as orderStatus
+FROM orders o 
+JOIN order_items oi ON o.id = oi.order_id 
+WHERE o.created_at > (
+  SELECT MAX(orderDate) 
+  FROM campaign_transactions 
+  WHERE campaignId = :campaignId
+) 
+  AND oi.product_category = 'Premium'
+```
+
+## 🔄 Runtime Processing
+
+### **Transaction Processing Flow**
+
+#### **1. Rule Evaluation**
+```typescript
+// Process each transaction
+for (const transaction of transactions) {
+  // Evaluate eligibility rules first
+  const eligibilityResults = await evaluateEligibilityRules(transaction);
+  
+  if (!eligibilityResults.every(result => result.passed)) {
+    // Transaction failed eligibility - skip processing
+    continue;
+  }
+  
+  // Process accrual rules
+  const accrualResults = await evaluateAccrualRules(transaction);
+  
+  // Calculate total points
+  let totalPoints = 0;
+  for (const result of accrualResults) {
+    if (result.passed) {
+      totalPoints += result.pointsAllocated;
+    }
+  }
+  
+  // Process bonus rules
+  const bonusResults = await evaluateBonusRules(transaction);
+  for (const result of bonusResults) {
+    if (result.passed) {
+      totalPoints += result.pointsAllocated;
+    }
+  }
+}
+```
+
+#### **2. Condition Evaluation**
+```typescript
+// Field comparison
+if (condition.type === 'fieldComparison') {
+  const fieldValue = getTransactionFieldValue(transaction, condition.field);
+  
+  switch (condition.operator) {
+    case 'equals':
+      return fieldValue === condition.value;
+    case 'greaterThan':
+      return Number(fieldValue) > Number(condition.value);
+    case 'contains':
+      return String(fieldValue).includes(String(condition.value));
+    // ... more operators
+  }
 }
 
-# Analyze database schema
-POST /api/rules-engine/analyze-schema
-{
-  "campaignId": "campaign_id",
-  "databaseConnection": "connection_details",
-  "sampleQueries": ["query1", "query2"]
+// Aggregate conditions
+if (condition.type === 'aggregate') {
+  const aggregateValue = await calculateAggregate(condition);
+  return evaluateComparison(aggregateValue, condition.operator, condition.value);
 }
 
-# Generate microservice code
-POST /api/rules-engine/generate-code
-{
-  "campaignId": "campaign_id",
-  "rulesId": "rules_id",
-  "schemaId": "schema_id"
+// Logical conditions
+if (condition.type === 'logical') {
+  const subResults = condition.subConditions.map(sub => 
+    evaluateRuleCondition(sub, transaction)
+  );
+  
+  switch (condition.logicalOperator) {
+    case 'AND':
+      return subResults.every(result => result);
+    case 'OR':
+      return subResults.some(result => result);
+  }
 }
 ```
 
-### **Job Management API**
-```bash
-# Create a new job
+#### **3. Point Calculation**
+```typescript
+// Mathematical calculation
+if (calculation.type === 'mathematical') {
+  let totalValue = 0;
+  for (const field of calculation.fields) {
+    const fieldValue = getTransactionFieldValue(transaction, field);
+    totalValue += Number(fieldValue) || 0;
+  }
+  
+  let result = totalValue * calculation.multiplier;
+  
+  // Apply rounding
+  if (calculation.rounding) {
+    switch (calculation.rounding) {
+      case 'floor':
+        result = Math.floor(result);
+        break;
+      case 'ceil':
+        result = Math.ceil(result);
+        break;
+      case 'round':
+        result = Math.round(result);
+        break;
+    }
+  }
+  
+  return Math.max(0, result);
+}
+
+// Fixed points
+if (calculation.type === 'fixed') {
+  return calculation.points || 0;
+}
+
+// Percentage calculation
+if (calculation.type === 'percentage') {
+  let totalValue = 0;
+  for (const field of calculation.fields) {
+    const fieldValue = getTransactionFieldValue(transaction, field);
+    totalValue += Number(fieldValue) || 0;
+  }
+  
+  return Math.max(0, (totalValue * calculation.percentage) / 100);
+}
+```
+
+### **4. TLP API Generation**
+```typescript
+// Generate accrual API call
+const apiCall = {
+  ruleId: result.ruleId,
+  ruleName: result.ruleDetails.name,
+  points: result.pointsAllocated,
+  apiEndpoint: '/api/tlp/accruals',
+  requestBody: {
+    campaignId: transaction.campaignId,
+    userId: transaction.userId,
+    points: result.pointsAllocated,
+    ruleId: result.ruleId,
+    transactionId: transaction.id,
+    description: `${result.ruleDetails.name}: ${result.pointsAllocated} points`,
+    metadata: {
+      ruleType: result.ruleType,
+      ruleDescription: result.ruleDetails.description,
+      transactionData: transaction.transactionData
+    }
+  },
+  priority: result.ruleDetails.priority || 1
+};
+```
+
+## 🗄️ Database Schema
+
+### **Transaction Table**
+```sql
+CREATE TABLE campaign_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id UUID NOT NULL REFERENCES campaigns(id),
+  external_id VARCHAR(255) NOT NULL,
+  external_type VARCHAR(100) NOT NULL,
+  transaction_data JSONB NOT NULL, -- Flexible JSON schema
+  status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+  processing_priority INTEGER DEFAULT 1,
+  points_allocated INTEGER DEFAULT 0,
+  rules_evaluated JSONB, -- Rule evaluation results
+  tlp_api_calls JSONB, -- Generated TLP API calls
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX idx_campaign_transactions_campaign_id ON campaign_transactions(campaign_id);
+CREATE INDEX idx_campaign_transactions_external_id ON campaign_transactions(external_id);
+CREATE INDEX idx_campaign_transactions_status ON campaign_transactions(status);
+CREATE INDEX idx_campaign_transactions_priority ON campaign_transactions(processing_priority);
+
+-- JSONB indexes for querying transaction data
+CREATE INDEX idx_campaign_transactions_data_gin ON campaign_transactions USING GIN (transaction_data);
+```
+
+### **Rules and Schemas Tables**
+```sql
+CREATE TABLE campaign_rules (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id UUID NOT NULL REFERENCES campaigns(id),
+  rule_set JSONB NOT NULL, -- Complete JSON rule set
+  version VARCHAR(20) NOT NULL,
+  status VARCHAR(50) DEFAULT 'DRAFT',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE campaign_schemas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id UUID NOT NULL REFERENCES campaigns(id),
+  transaction_schema JSONB NOT NULL, -- Transaction table schema
+  data_extraction_queries JSONB NOT NULL, -- SQL queries
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+## 🔌 API Endpoints
+
+### **Rules Engine API (Port 3002)**
+
+#### **Health & Monitoring**
+```http
+GET /health
+GET /health/detailed
+```
+
+#### **AI-Powered Generation**
+```http
+POST /api/ai/generate-transaction-schema
+POST /api/ai/generate-rules
+POST /api/ai/analyze-database-schema
+```
+
+#### **Data Extraction**
+```http
+POST /api/extraction/one-time-load
+POST /api/extraction/incremental-load
+POST /api/extraction/schedule-loads
+GET /api/extraction/status/:campaignId
+```
+
+#### **Rule Processing**
+```http
+POST /api/rules/process-transaction
+POST /api/rules/process-batch
+GET /api/rules/campaign/:campaignId
+GET /api/rules/validate/:ruleSetId
+```
+
+#### **Job Management**
+```http
 POST /api/jobs
-{
-  "campaignId": "campaign_id",
-  "jobType": "INITIAL_DATA_LOAD",
-  "schedule": "0 0 * * *",
-  "isRecurring": true,
-  "dataSourceConfig": "database_connection_config",
-  "batchSize": 1000,
-  "maxConcurrency": 5
-}
-
-# Start job execution
-POST /api/jobs/{jobId}/start
-
-# Stop job execution
-POST /api/jobs/{jobId}/stop
+GET /api/jobs/:jobId
+POST /api/jobs/:jobId/start
+POST /api/jobs/:jobId/stop
+DELETE /api/jobs/:jobId
 ```
 
-### **Transaction Management API**
-```bash
-# Get campaign transactions
-GET /api/transactions/campaign/{campaignId}?limit=100&offset=0&status=COMPLETED
-
-# Retry failed transaction
-POST /api/transactions/{transactionId}/retry
-
-# Get transaction statistics
-GET /api/transactions/campaign/{campaignId}/stats
-```
-
-## 🎯 Campaign Workflow
-
-### **1. Campaign Creation**
-```
-User creates campaign → Frontend sends to Backend → Backend stores campaign
-```
-
-### **2. Rule Generation**
-```
-Admin describes rules → AI analyzes → Generates structured rules → Stores in database
-```
-
-### **3. Schema Analysis**
-```
-Connect to customer DB → AI analyzes schema → Maps to campaign rules → Stores analysis
-```
-
-### **4. Code Generation**
-```
-AI generates → Microservice code → TLP integration → Test code → Stores generated code
-```
-
-### **5. Campaign Execution**
-```
-Create execution job → Extract data → Apply rules → Allocate points → TLP integration
-```
-
-## 🔍 AI Integration Details
-
-### **Anthropic Claude 3.5 Sonnet**
-- **Model**: `claude-3-5-sonnet-20241022`
-- **Max Tokens**: 4000 per request
-- **Capabilities**: Complex reasoning, code generation, schema analysis
-- **Multi-language**: English, Portuguese, Spanish support
-
-### **Prompt Engineering**
-- **Structured Output**: JSON-only responses for consistency
-- **Context Awareness**: Includes schema and rule context
-- **Error Handling**: Comprehensive error messages and feedback
-- **Validation**: Built-in response validation and parsing
-
-### **Generated Artifacts**
-- **Campaign Rules**: Structured goal, eligibility, and prize rules
-- **Database Queries**: Optimized SQL with pagination
-- **TypeScript Code**: Complete microservice implementation
-- **TLP Integration**: API integration code and error handling
-- **Test Code**: Unit tests for generated rules
-
-## 📈 Performance & Scalability
+## 🚀 Performance & Scaling
 
 ### **Batch Processing**
-- **Configurable Batch Sizes**: 100-10,000 records per batch
-- **Concurrency Control**: 1-10 concurrent processing threads
-- **Memory Management**: Efficient memory usage with streaming
-- **Progress Tracking**: Real-time progress updates
+- **Configurable Batch Sizes**: Process 100-10,000 transactions per batch
+- **Concurrency Control**: Parallel processing with configurable limits
+- **Memory Management**: Efficient JSON processing and garbage collection
+- **Database Optimization**: Connection pooling and query optimization
 
-### **Database Optimization**
-- **Connection Pooling**: Efficient database connection management
-- **Query Optimization**: AI-generated optimized queries
-- **Indexing**: Automatic index recommendations
-- **Pagination**: Efficient large dataset handling
+### **Real-Time Processing**
+- **Streaming**: Process transactions as they arrive
+- **Priority Queues**: High-priority transactions processed first
+- **Status Updates**: Real-time progress tracking and status updates
+- **Error Handling**: Comprehensive retry mechanisms and error recovery
 
 ### **Monitoring & Metrics**
-- **Health Checks**: Comprehensive health monitoring
 - **Performance Metrics**: Processing time, throughput, error rates
-- **Logging**: Structured logging with different levels
-- **Alerting**: Error notification and monitoring
-
-## 🔐 Security Features
-
-### **Authentication & Authorization**
-- **JWT Tokens**: Secure token-based authentication
-- **Role-Based Access**: Admin and Participant role management
-- **API Security**: Rate limiting and request validation
-- **Secure Headers**: Helmet.js security middleware
-
-### **Data Protection**
-- **Encryption**: Sensitive data encryption at rest
-- **Access Control**: Database-level access restrictions
-- **Audit Logging**: Complete audit trail of all operations
-- **Error Handling**: Secure error messages without data leakage
-
-## 🚨 Error Handling & Recovery
-
-### **Retry Mechanisms**
-- **Automatic Retries**: Configurable retry attempts for failed operations
-- **Exponential Backoff**: Intelligent retry timing
-- **Dead Letter Queues**: Failed transaction handling
-- **Manual Recovery**: Admin-initiated retry and recovery
-
-### **Error Classification**
-- **Transient Errors**: Network issues, temporary failures
-- **Permanent Errors**: Invalid data, configuration issues
-- **System Errors**: Infrastructure, database issues
-- **Business Logic Errors**: Rule validation failures
-
-## 📊 Monitoring & Observability
-
-### **Health Monitoring**
-```bash
-# Basic health check
-GET /health
-
-# Detailed health information
-GET /health/detailed
-
-# Metrics endpoint
-GET /metrics
-```
-
-### **Logging Levels**
-- **ERROR**: System errors and failures
-- **WARN**: Warning conditions
-- **INFO**: General information
-- **DEBUG**: Detailed debugging information
-
-### **Performance Metrics**
-- **Response Times**: API endpoint performance
-- **Throughput**: Transactions processed per second
-- **Error Rates**: Success/failure ratios
-- **Resource Usage**: CPU, memory, database usage
+- **Health Checks**: Service availability and performance monitoring
+- **Logging**: Structured logging with different log levels
+- **Alerting**: Automated alerts for failures and performance issues
 
 ## 🔧 Configuration
 
 ### **Environment Variables**
 ```bash
-# Service Configuration
-NODE_ENV=production
-PORT=3002
+# AI Service
+ANTHROPIC_API_KEY=your_anthropic_api_key
 
-# Database Configuration
-DATABASE_URL=postgresql://user:pass@host:port/db
+# Database
+DATABASE_URL=postgresql://user:pass@host:5432/db
 
-# AI Configuration
-ANTHROPIC_API_KEY=your_api_key
-ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
-
-# TLP Configuration
+# TLP Integration
 TLP_API_KEY=your_tlp_api_key
 TLP_ENDPOINT_URL=https://exata-customer.pravici.io
+TLP_API_DOCUMENTATION_URL=your_tlp_docs_url
 
-# Security
-JWT_SECRET=your_jwt_secret
+# Performance
+BATCH_SIZE=1000
+MAX_CONCURRENCY=5
+PROCESSING_TIMEOUT=30000
 ```
 
-### **Job Configuration**
-```json
-{
-  "batchSize": 1000,
-  "maxConcurrency": 5,
-  "retryAttempts": 3,
-  "retryDelay": 5000,
-  "timeout": 300000
-}
+### **Service Configuration**
+```typescript
+// Rules Engine Configuration
+const config = {
+  batchSize: process.env.BATCH_SIZE || 1000,
+  maxConcurrency: process.env.MAX_CONCURRENCY || 5,
+  processingTimeout: process.env.PROCESSING_TIMEOUT || 30000,
+  retryAttempts: 3,
+  retryDelay: 1000,
+  healthCheckInterval: 30000
+};
 ```
 
-## 🧪 Testing
+## 🧪 Testing & Validation
 
-### **Unit Tests**
-```bash
-# Run tests
-npm test
+### **Rule Testing**
+```typescript
+// Test rules against sample data
+const testResult = await rulesProcessor.testRules(
+  ruleSet,
+  sampleTransactions
+);
 
-# Run with coverage
-npm run test:coverage
-
-# Run specific test suite
-npm test -- --grep "Rules Engine"
+// Validate rule syntax and logic
+const validationResult = await rulesProcessor.validateRules(ruleSet);
 ```
 
-### **Integration Tests**
-```bash
-# Test with real database
-npm run test:integration
-
-# Test AI integration
-npm run test:ai
-
-# Test TLP integration
-npm run test:tlp
-```
-
-### **Load Testing**
-```bash
-# Run load tests
-npm run test:load
-
-# Performance benchmarks
-npm run test:performance
+### **Integration Testing**
+```typescript
+// Test complete workflow
+const workflowResult = await testCompleteWorkflow({
+  naturalLanguageRules: "Premium products get 1 point per 1000 MXN",
+  sampleDatabase: goodyearDatabase,
+  expectedResults: {
+    totalPoints: 6300,
+    transactionsProcessed: 100,
+    tlpApiCalls: 95
+  }
+});
 ```
 
 ## 🚀 Deployment
 
-### **Docker Deployment**
-```bash
-# Build image
-docker build -t incentiva-rules-engine .
+### **Docker Configuration**
+```dockerfile
+FROM node:21.7.3-alpine
 
-# Run container
-docker run -d \
-  --name rules-engine \
-  -p 3002:3002 \
-  -e DATABASE_URL=postgresql://... \
-  -e ANTHROPIC_API_KEY=... \
-  -e TLP_API_KEY=... \
-  -e TLP_ENDPOINT_URL=https://exata-customer.pravici.io \
-  incentiva-rules-engine
+# Install dependencies
+RUN apk add --no-cache postgresql-client curl bash
+
+# Create app directory
+WORKDIR /app
+
+# Copy package files and install dependencies
+COPY package*.json ./
+COPY shared/package*.json ./shared/
+COPY rules-engine/package*.json ./rules-engine/
+
+WORKDIR /app/shared
+RUN npm install
+
+WORKDIR /app/rules-engine
+RUN npm install
+
+# Copy source code
+COPY shared/ /app/shared/
+COPY rules-engine/ /app/rules-engine/
+COPY backend/prisma/ /app/rules-engine/prisma/
+
+# Build and generate Prisma client
+RUN npx tsc -p tsconfig.json
+RUN npx prisma generate
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+RUN chown -R nodejs:nodejs /app
+USER nodejs
+
+# Expose port and health check
+EXPOSE 3002
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3002/health || exit 1
+
+# Start the application
+CMD ["npm", "start"]
 ```
 
-### **Kubernetes Deployment**
+### **Docker Compose**
 ```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: rules-engine
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: rules-engine
-  template:
-    metadata:
-      labels:
-        app: rules-engine
-    spec:
-      containers:
-      - name: rules-engine
-        image: incentiva-rules-engine:latest
-        ports:
-        - containerPort: 3002
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: db-secret
-              key: url
+rules-engine:
+  build:
+    context: .
+    dockerfile: rules-engine/Dockerfile
+  container_name: incentiva-rules-engine
+  restart: unless-stopped
+  environment:
+    NODE_ENV: production
+    DATABASE_URL: postgresql://incentiva:incentiva123@postgres:5432/incentiva_dev
+    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    TLP_API_KEY: ${TLP_API_KEY}
+    TLP_ENDPOINT_URL: ${TLP_ENDPOINT_URL}
+  ports:
+    - "3002:3002"
+  depends_on:
+    postgres:
+      condition: service_healthy
+  volumes:
+    - ./logs:/app/logs
+    - ./rules:/app/rules
 ```
 
-## 🔮 Future Enhancements
+## 🔒 Security
 
-### **Planned Features**
-- **Multi-AI Provider Support**: OpenAI GPT-4, Google Gemini integration
-- **Advanced Scheduling**: Cron expressions and calendar-based scheduling
-- **Real-time Streaming**: WebSocket-based real-time updates
-- **Machine Learning**: Predictive analytics and optimization
-- **Multi-region Support**: Global deployment and data localization
+### **Authentication & Authorization**
+- **JWT Tokens**: Secure token-based authentication
+- **Role-Based Access**: Admin and service roles
+- **API Key Management**: Secure storage of external API keys
+- **Rate Limiting**: API request throttling and abuse prevention
 
-### **Performance Improvements**
-- **Horizontal Scaling**: Auto-scaling based on load
-- **Caching Layer**: Redis-based caching for performance
-- **Async Processing**: Event-driven architecture
-- **Database Sharding**: Horizontal database scaling
+### **Data Protection**
+- **Input Validation**: Comprehensive input validation and sanitization
+- **SQL Injection Prevention**: Parameterized queries and ORM usage
+- **Data Encryption**: Sensitive data encryption at rest and in transit
+- **Audit Logging**: Complete audit trail for all operations
 
-## 📞 Support & Troubleshooting
+## 📊 Monitoring & Observability
 
-### **Common Issues**
-1. **AI API Errors**: Check Anthropic API key and rate limits
-2. **Database Connection**: Verify PostgreSQL connection string
-3. **Memory Issues**: Adjust batch sizes and concurrency
-4. **Performance Issues**: Monitor database indexes and query optimization
+### **Logging**
+```typescript
+// Structured logging with different levels
+logger.info('Transaction processing started', {
+  campaignId,
+  transactionCount,
+  batchSize,
+  timestamp: new Date().toISOString()
+});
 
-### **Debug Mode**
-```bash
-# Enable debug logging
-NODE_ENV=development npm run dev
-
-# View detailed logs
-docker-compose logs rules-engine -f --tail=100
+logger.error('Rule evaluation failed', {
+  transactionId,
+  ruleId,
+  error: error.message,
+  stack: error.stack
+});
 ```
 
-### **Support Channels**
-- **Documentation**: This README and API docs
-- **Logs**: Container logs and application logs
-- **Metrics**: Health endpoints and monitoring
-- **Community**: GitHub issues and discussions
+### **Metrics**
+- **Processing Metrics**: Transactions per second, success rate, error rate
+- **Performance Metrics**: Response time, throughput, resource usage
+- **Business Metrics**: Points allocated, campaigns processed, TLP integration success
+- **System Metrics**: CPU, memory, disk usage, network I/O
+
+### **Health Checks**
+```typescript
+// Health check endpoint
+app.get('/health', (req, res) => {
+  const health = {
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    version: process.env.npm_package_version || '1.0.0'
+  };
+  
+  res.json(health);
+});
+
+// Detailed health check
+app.get('/health/detailed', async (req, res) => {
+  try {
+    const dbHealth = await checkDatabaseHealth();
+    const aiHealth = await checkAIHealth();
+    const tlpHealth = await checkTLPHealth();
+    
+    const detailedHealth = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      services: {
+        database: dbHealth,
+        ai: aiHealth,
+        tlp: tlpHealth
+      }
+    };
+    
+    res.json(detailedHealth);
+  } catch (error) {
+    res.status(503).json({
+      status: 'unhealthy',
+      error: error.message
+    });
+  }
+});
+```
+
+## 🎯 What This Means for You
+
+### **✅ Complete Automation**
+- **Natural Language → Executable System**: Write rules in plain English, get a complete processing system
+- **Zero Code Required**: No need to write SQL, TypeScript, or API integration code
+- **Automatic Schema Generation**: AI creates optimal database schemas for your data
+- **Intelligent Rule Processing**: Rules are parsed and executed at runtime
+
+### **✅ Production Ready**
+- **Scalable Architecture**: Process thousands of transactions with configurable batch sizes
+- **Real-Time Processing**: Live transaction processing with immediate point allocation
+- **Comprehensive Monitoring**: Complete visibility into processing status and performance
+- **Error Handling**: Robust error handling with retry mechanisms and recovery
+
+### **✅ TLP Integration**
+- **Automatic API Generation**: Creates all necessary TLP API calls for point allocation
+- **Member Management**: Automatically creates TLP members for campaign participants
+- **Offer Generation**: Creates accrual and redemption offers based on campaign rules
+- **Status Tracking**: Monitors API call success/failure and provides detailed feedback
+
+## 🚀 Next Steps
+
+1. **Configure Environment**: Set up your Anthropic API key and TLP credentials
+2. **Create Campaigns**: Use natural language to define your loyalty campaigns
+3. **Execute Campaigns**: Launch the complete execution workflow
+4. **Monitor Processing**: Watch real-time transaction processing and point allocation
+5. **Scale Up**: Process larger datasets and more complex rule sets
 
 ---
 
-## 🎉 **Rules Engine Ready!**
+**🎉 The Rules Engine is now a complete, production-ready transaction processing system!**
 
-Your Incentiva Rules Engine is now fully configured and ready to process loyalty campaigns with AI-powered intelligence. The system will automatically:
-
-1. **Analyze** customer database schemas
-2. **Generate** executable campaign rules
-3. **Create** optimized microservices
-4. **Process** transactions efficiently
-5. **Integrate** with Pravici TLP seamlessly
-
-**Next Steps:**
-1. Configure your Anthropic API key
-2. Create your first campaign with natural language rules
-3. Let AI analyze your customer database
-4. Execute campaigns with automated point allocation
-
-**Happy Campaigning! 🚀**
+From natural language rules to automated TLP integration, it handles the entire lifecycle of loyalty campaign execution with AI-powered intelligence and real-time processing capabilities.

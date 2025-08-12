@@ -1,12 +1,13 @@
 import axios from 'axios';
+import { prisma } from '../index';
 import { logger } from '../utils/logger';
 import { 
-  CustomerDatabaseSchema, 
   GeneratedRules, 
   GeneratedCode,
-  GoalRule,
-  EligibilityRule,
-  PrizeRule
+  CustomerDatabaseSchema,
+  TransactionJSONSchema,
+  JSONRuleSet,
+  DataExtractionQueries
 } from '@incentiva/shared';
 
 export class AIService {
@@ -112,6 +113,41 @@ export class AIService {
     } catch (error) {
       logger.error('Failed to generate code:', error);
       throw new Error(`Failed to generate code: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Generate transaction JSON schema and rules from natural language
+   */
+  async generateTransactionSchemaAndRules(
+    campaignId: string,
+    naturalLanguageRules: string,
+    databaseSchema: CustomerDatabaseSchema
+  ): Promise<{
+    transactionSchema: TransactionJSONSchema;
+    ruleSet: JSONRuleSet;
+    dataExtractionQueries: DataExtractionQueries;
+  }> {
+    if (!this.anthropicApiKey) {
+      throw new Error('Anthropic API key not configured');
+    }
+
+    logger.info('Generating transaction schema and rules:', { campaignId });
+
+    try {
+      const prompt = this.buildTransactionSchemaPrompt(naturalLanguageRules, databaseSchema);
+      
+      const response = await this.callAnthropic(prompt);
+      
+      // Parse the response and extract schema and rules
+      const parsed = this.parseTransactionSchemaAndRules(response, campaignId);
+      
+      logger.info('Transaction schema and rules generated successfully:', { campaignId });
+      
+      return parsed;
+    } catch (error) {
+      logger.error('Failed to generate transaction schema and rules:', error);
+      throw new Error(`Failed to generate transaction schema and rules: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -351,6 +387,133 @@ Return only valid JSON, no additional text.`;
   }
 
   /**
+   * Build prompt for transaction schema and rules generation
+   */
+  private buildTransactionSchemaPrompt(
+    naturalLanguageRules: string,
+    databaseSchema: CustomerDatabaseSchema
+  ): string {
+    return `You are an expert data engineer specializing in loyalty campaign data processing. Based on the natural language rules and database schema, generate a complete transaction processing system.
+
+Natural Language Rules:
+${naturalLanguageRules}
+
+Database Schema:
+${JSON.stringify(databaseSchema, null, 2)}
+
+Please provide the following JSON format:
+{
+  "transactionSchema": {
+    "tableName": "campaign_transactions",
+    "description": "Transaction table for campaign processing",
+    "fields": [
+      {
+        "name": "field_name",
+        "type": "data_type",
+        "required": true,
+        "description": "Field description",
+        "sourceField": "original_database_field",
+        "transformation": "any_transformation_logic",
+        "validation": "validation_rules"
+      }
+    ],
+    "indexes": ["index1", "index2"],
+    "constraints": ["constraint1", "constraint2"]
+  },
+  "ruleSet": {
+    "campaignId": "campaign_id",
+    "version": "1.0",
+    "rules": {
+      "eligibility": [
+        {
+          "id": "rule_1",
+          "name": "Premium Line Eligibility",
+          "description": "Only Premium line products qualify",
+          "condition": {
+            "type": "fieldComparison",
+            "field": "productLine",
+            "operator": "equals",
+            "value": "Premium"
+          },
+          "priority": 1,
+          "enabled": true
+        }
+      ],
+      "accrual": [
+        {
+          "id": "accrual_1",
+          "name": "Points per MXN",
+          "description": "1 point per 1000 MXN spent",
+          "condition": {
+            "type": "fieldComparison",
+            "field": "orderStatus",
+            "operator": "equals",
+            "value": "completed"
+          },
+          "calculation": {
+            "type": "mathematical",
+            "formula": "orderAmount * 0.001",
+            "fields": ["orderAmount"],
+            "multiplier": 0.001,
+            "rounding": "floor"
+          },
+          "priority": 1,
+          "enabled": true
+        }
+      ],
+      "bonus": [
+        {
+          "id": "bonus_1",
+          "name": "Individual Goal Bonus",
+          "description": "Bonus points for reaching individual goal",
+          "condition": {
+            "type": "aggregate",
+            "aggregation": "sum",
+            "field": "orderAmount",
+            "operator": "gte",
+            "value": 200000
+          },
+          "calculation": {
+            "type": "fixed",
+            "points": 50000
+          },
+          "priority": 2,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "dataExtractionQueries": {
+    "oneTimeLoad": {
+      "description": "Initial data load for campaign",
+      "sql": "SELECT o.id as orderId, o.customer_id as customerId, o.total_amount as orderAmount, oi.product_category as productLine, o.created_at as orderDate, o.status as orderStatus FROM orders o JOIN order_items oi ON o.id = oi.order_id WHERE o.created_at BETWEEN '2024-01-01' AND '2024-12-31' AND oi.product_category = 'Premium'",
+      "parameters": {
+        "startDate": "2024-01-01",
+        "endDate": "2024-12-31",
+        "productCategory": "Premium"
+      }
+    },
+    "incrementalLoad": {
+      "description": "Incremental data load",
+      "sql": "SELECT o.id as orderId, o.customer_id as customerId, o.total_amount as orderAmount, oi.product_category as productLine, o.created_at as orderDate, o.status as orderStatus FROM orders o JOIN order_items oi ON o.id = oi.order_id WHERE o.created_at > (SELECT MAX(orderDate) FROM campaign_transactions WHERE campaignId = :campaignId) AND oi.product_category = 'Premium'",
+      "parameters": {
+        "campaignId": "campaign_id_placeholder"
+      }
+    }
+  }
+}
+
+Focus on:
+1. Creating a comprehensive transaction schema that captures all data needed for rule processing
+2. Generating executable JSON rules that can be parsed and applied at runtime
+3. Creating efficient data extraction queries for both one-time and incremental loads
+4. Ensuring the schema supports all rule types (eligibility, accrual, bonus)
+5. Making rules flexible and configurable
+
+Return only valid JSON, no additional text.`;
+  }
+
+  /**
    * Parse generated rules from Anthropic response
    */
   private parseGeneratedRules(response: string, campaignId: string): GeneratedRules {
@@ -443,6 +606,40 @@ Return only valid JSON, no additional text.`;
     } catch (error) {
       logger.error('Failed to parse generated code:', error);
       throw new Error(`Failed to parse generated code: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Parse transaction schema and rules from Anthropic response
+   */
+  private parseTransactionSchemaAndRules(
+    response: string, 
+    campaignId: string
+  ): {
+    transactionSchema: TransactionJSONSchema;
+    ruleSet: JSONRuleSet;
+    dataExtractionQueries: DataExtractionQueries;
+  } {
+    try {
+      // Extract JSON from response
+      const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/) || 
+                       response.match(/\{[\s\S]*\}/);
+      
+      if (!jsonMatch) {
+        throw new Error('No valid JSON found in response');
+      }
+
+      const jsonStr = jsonMatch[1] || jsonMatch[0];
+      const parsed = JSON.parse(jsonStr);
+
+      return {
+        transactionSchema: parsed.transactionSchema,
+        ruleSet: parsed.ruleSet,
+        dataExtractionQueries: parsed.dataExtractionQueries
+      };
+    } catch (error) {
+      logger.error('Failed to parse transaction schema and rules:', error);
+      throw new Error(`Failed to parse transaction schema and rules: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }

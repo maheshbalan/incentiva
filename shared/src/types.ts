@@ -483,6 +483,80 @@ export interface GeneratedCode {
 }
 
 // ============================================================================
+// TRANSACTION PROCESSING TYPES (NEW!)
+// ============================================================================
+
+export interface TransactionJSONSchema {
+  tableName: string
+  description: string
+  fields: TransactionField[]
+  indexes: string[]
+  constraints: string[]
+}
+
+export interface TransactionField {
+  name: string
+  type: string
+  required: boolean
+  description: string
+  sourceField: string
+  transformation?: string
+  validation?: string
+}
+
+export interface JSONRuleSet {
+  campaignId: string
+  version: string
+  rules: {
+    eligibility: RuleDefinition[]
+    accrual: RuleDefinition[]
+    bonus: RuleDefinition[]
+  }
+}
+
+export interface RuleDefinition {
+  id: string
+  name: string
+  description: string
+  condition: RuleCondition
+  priority: number
+  enabled: boolean
+  calculation?: RuleCalculation
+}
+
+export interface RuleCondition {
+  type: 'fieldComparison' | 'aggregate' | 'logical' | 'custom'
+  field?: string
+  operator?: string
+  value?: any
+  aggregation?: string
+  fields?: string[]
+  logicalOperator?: 'AND' | 'OR'
+  subConditions?: RuleCondition[]
+}
+
+export interface RuleCalculation {
+  type: 'mathematical' | 'fixed' | 'percentage' | 'custom'
+  formula?: string
+  fields?: string[]
+  multiplier?: number
+  rounding?: 'floor' | 'ceil' | 'round'
+  points?: number
+  percentage?: number
+}
+
+export interface DataExtractionQueries {
+  oneTimeLoad: DataExtractionQuery
+  incrementalLoad: DataExtractionQuery
+}
+
+export interface DataExtractionQuery {
+  description: string
+  sql: string
+  parameters: Record<string, any>
+}
+
+// ============================================================================
 // AI SERVICE
 // ============================================================================
 

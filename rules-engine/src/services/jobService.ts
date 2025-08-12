@@ -28,32 +28,16 @@ export class JobService {
   constructor() {
     // Initialize services with mock configurations for now
     // TODO: Get actual configurations from campaign or environment
-    this.dataExtractionService = new DataExtractionService({
-      type: 'postgresql',
-      host: 'localhost',
-      port: 5432,
-      database: 'customer_db',
-      username: 'user',
-      password: 'password'
-    });
+    this.dataExtractionService = new DataExtractionService();
     
     this.rulesProcessingService = new RulesProcessingService({
       campaignId: 'mock-campaign-id',
-      schema: { tables: [], relationships: [], understandingScore: 0, feedback: '' },
-      rules: { goalRules: [], eligibilityRules: [], prizeRules: [] },
-      generatedCode: { 
-        typescript: '', 
-        sql: '', 
-        validation: '', 
-        documentation: '',
-        dataExtractionQuery: '',
-        rulesApplicationLogic: '',
-        tlpIntegrationCode: '',
-        microserviceCode: '',
-        testCode: ''
-      },
-      understandingScore: 0,
-      feedback: ''
+      version: '1.0',
+      rules: { 
+        eligibility: [], 
+        accrual: [], 
+        bonus: [] 
+      }
     });
     
     this.tlpIntegrationService = new TLPIntegrationService({

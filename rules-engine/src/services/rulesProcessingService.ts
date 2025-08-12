@@ -1,77 +1,119 @@
 import { logger } from '../utils/logger';
-import { GeneratedRules, CampaignTransaction } from '@incentiva/shared';
+import { prisma } from '../index';
+import { 
+  GeneratedRules, 
+  CampaignTransaction,
+  JSONRuleSet,
+  RuleDefinition,
+  RuleCondition,
+  RuleCalculation
+} from '@incentiva/shared';
 
 export interface RuleEvaluationResult {
-  transactionId: string;
-  ruleId: string;
-  ruleType: string;
-  passed: boolean;
-  actualValue?: number;
-  expectedValue?: number;
-  pointsAllocated: number;
-  errorMessage?: string;
-  executionTime: number;
+  transactionId: string
+  ruleId: string
+  ruleType: string
+  passed: boolean
+  actualValue?: number
+  expectedValue?: number
+  pointsAllocated: number
+  errorMessage?: string
+  executionTime: number
+  ruleDetails: RuleDefinition
 }
 
 export interface ProcessingResult {
-  transactionId: string;
-  success: boolean;
-  pointsAllocated: number;
-  rulesEvaluated: RuleEvaluationResult[];
-  totalExecutionTime: number;
-  errorMessage?: string;
+  transactionId: string
+  success: boolean
+  pointsAllocated: number
+  rulesEvaluated: RuleEvaluationResult[]
+  totalExecutionTime: number
+  errorMessage?: string
+  accrualApiCalls: AccrualAPICall[]
+}
+
+export interface AccrualAPICall {
+  ruleId: string
+  ruleName: string
+  points: number
+  apiEndpoint: string
+  requestBody: Record<string, any>
+  priority: number
 }
 
 export class RulesProcessingService {
-  private rules: GeneratedRules;
+  private ruleSet: JSONRuleSet;
 
-  constructor(rules: GeneratedRules) {
-    this.rules = rules;
+  constructor(ruleSet: JSONRuleSet) {
+    this.ruleSet = ruleSet;
   }
 
+  /**
+   * Process a transaction using the JSON rule set
+   */
   async processTransaction(transaction: CampaignTransaction): Promise<ProcessingResult> {
     const startTime = Date.now();
     const rulesEvaluated: RuleEvaluationResult[] = [];
     let totalPoints = 0;
     let success = true;
     let errorMessage: string | undefined;
+    const accrualApiCalls: AccrualAPICall[] = [];
 
     try {
-      logger.info('Processing transaction with rules:', { 
+      logger.info('Processing transaction with JSON rules:', { 
         transactionId: transaction.id,
-        ruleCount: this.rules.rules.goalRules.length + this.rules.rules.eligibilityRules.length + this.rules.rules.prizeRules.length
+        ruleCount: this.getTotalRuleCount()
       });
 
-      // Process goal rules
-      for (const goalRule of this.rules.rules.goalRules) {
-        const result = await this.evaluateGoalRule(transaction, goalRule);
-        rulesEvaluated.push(result);
-        
-        if (result.passed) {
+      // Process eligibility rules first
+      const eligibilityResults = await this.evaluateEligibilityRules(transaction);
+      rulesEvaluated.push(...eligibilityResults);
+
+      // Check if eligibility passed
+      const eligibilityPassed = eligibilityResults.every(result => result.passed);
+      if (!eligibilityPassed) {
+        success = false;
+        errorMessage = 'Transaction failed eligibility rules';
+        return {
+          transactionId: transaction.id,
+          success: false,
+          pointsAllocated: 0,
+          rulesEvaluated,
+          totalExecutionTime: Date.now() - startTime,
+          errorMessage,
+          accrualApiCalls: []
+        };
+      }
+
+      // Process accrual rules
+      const accrualResults = await this.evaluateAccrualRules(transaction);
+      rulesEvaluated.push(...accrualResults);
+
+      // Calculate total points and generate accrual API calls
+      for (const result of accrualResults) {
+        if (result.passed && result.pointsAllocated > 0) {
           totalPoints += result.pointsAllocated;
-        }
-      }
-
-      // Process eligibility rules
-      for (const eligibilityRule of this.rules.rules.eligibilityRules) {
-        const result = await this.evaluateEligibilityRule(transaction, eligibilityRule);
-        rulesEvaluated.push(result);
-        
-        if (!result.passed) {
-          success = false;
-          errorMessage = `Failed eligibility rule: ${eligibilityRule.description}`;
-          break;
-        }
-      }
-
-              // Only process prize rules if eligibility passed
-        if (success) {
-          for (const prizeRule of this.rules.rules.prizeRules) {
-          const result = await this.evaluatePrizeRule(transaction, prizeRule);
-          rulesEvaluated.push(result);
           
-          if (result.passed) {
-            totalPoints += result.pointsAllocated;
+          // Generate accrual API call
+          const apiCall = this.generateAccrualAPICall(result, transaction);
+          if (apiCall) {
+            accrualApiCalls.push(apiCall);
+          }
+        }
+      }
+
+      // Process bonus rules (if any)
+      const bonusResults = await this.evaluateBonusRules(transaction);
+      rulesEvaluated.push(...bonusResults);
+
+      // Add bonus points and API calls
+      for (const result of bonusResults) {
+        if (result.passed && result.pointsAllocated > 0) {
+          totalPoints += result.pointsAllocated;
+          
+          const apiCall = this.generateAccrualAPICall(result, transaction);
+          if (apiCall) {
+            accrualApiCalls.push(apiCall);
           }
         }
       }
@@ -82,7 +124,8 @@ export class RulesProcessingService {
         transactionId: transaction.id,
         success,
         totalPoints,
-        executionTime: totalExecutionTime
+        executionTime: totalExecutionTime,
+        accrualCalls: accrualApiCalls.length
       });
 
       return {
@@ -91,7 +134,8 @@ export class RulesProcessingService {
         pointsAllocated: totalPoints,
         rulesEvaluated,
         totalExecutionTime,
-        errorMessage
+        errorMessage,
+        accrualApiCalls
       };
 
     } catch (error) {
@@ -100,8 +144,7 @@ export class RulesProcessingService {
       
       logger.error('Transaction processing failed:', {
         transactionId: transaction.id,
-        error: errorMsg,
-        executionTime: totalExecutionTime
+        error: errorMsg
       });
 
       return {
@@ -110,267 +153,440 @@ export class RulesProcessingService {
         pointsAllocated: 0,
         rulesEvaluated,
         totalExecutionTime,
-        errorMessage: errorMsg
+        errorMessage: errorMsg,
+        accrualApiCalls: []
       };
     }
   }
 
-  private async evaluateGoalRule(
-    transaction: CampaignTransaction, 
-    rule: any
-  ): Promise<RuleEvaluationResult> {
-    const startTime = Date.now();
-    
-    try {
-      logger.debug('Evaluating goal rule:', { ruleId: rule.id, ruleType: rule.type });
+  /**
+   * Evaluate eligibility rules
+   */
+  private async evaluateEligibilityRules(transaction: CampaignTransaction): Promise<RuleEvaluationResult[]> {
+    const results: RuleEvaluationResult[] = [];
 
-      let actualValue: number | undefined;
-      let passed = false;
-      let pointsAllocated = 0;
+    for (const rule of this.ruleSet.rules.eligibility) {
+      if (!rule.enabled) continue;
 
-      // Extract transaction data
-      const transactionData = transaction.transactionData as any;
+      const startTime = Date.now();
+      try {
+        const passed = await this.evaluateRuleCondition(rule.condition, transaction);
+        const executionTime = Date.now() - startTime;
+
+        results.push({
+          transactionId: transaction.id,
+          ruleId: rule.id,
+          ruleType: 'eligibility',
+          passed,
+          pointsAllocated: 0,
+          executionTime,
+          ruleDetails: rule
+        });
+
+      } catch (error) {
+        const executionTime = Date.now() - startTime;
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        
+        results.push({
+          transactionId: transaction.id,
+          ruleId: rule.id,
+          ruleType: 'eligibility',
+          passed: false,
+          pointsAllocated: 0,
+          errorMessage: errorMsg,
+          executionTime,
+          ruleDetails: rule
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Evaluate accrual rules
+   */
+  private async evaluateAccrualRules(transaction: CampaignTransaction): Promise<RuleEvaluationResult[]> {
+    const results: RuleEvaluationResult[] = [];
+
+    for (const rule of this.ruleSet.rules.accrual) {
+      if (!rule.enabled) continue;
+
+      const startTime = Date.now();
+      try {
+        const passed = await this.evaluateRuleCondition(rule.condition, transaction);
+        let pointsAllocated = 0;
+
+        if (passed && rule.calculation) {
+          pointsAllocated = await this.calculatePoints(rule.calculation, transaction);
+        }
+
+        const executionTime = Date.now() - startTime;
+
+        results.push({
+          transactionId: transaction.id,
+          ruleId: rule.id,
+          ruleType: 'accrual',
+          passed,
+          pointsAllocated,
+          executionTime,
+          ruleDetails: rule
+        });
+
+      } catch (error) {
+        const executionTime = Date.now() - startTime;
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        
+        results.push({
+          transactionId: transaction.id,
+          ruleId: rule.id,
+          ruleType: 'accrual',
+          passed: false,
+          pointsAllocated: 0,
+          errorMessage: errorMsg,
+          executionTime,
+          ruleDetails: rule
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Evaluate bonus rules
+   */
+  private async evaluateBonusRules(transaction: CampaignTransaction): Promise<RuleEvaluationResult[]> {
+    const results: RuleEvaluationResult[] = [];
+
+    for (const rule of this.ruleSet.rules.bonus) {
+      if (!rule.enabled) continue;
+
+      const startTime = Date.now();
+      try {
+        const passed = await this.evaluateRuleCondition(rule.condition, transaction);
+        let pointsAllocated = 0;
+
+        if (passed && rule.calculation) {
+          pointsAllocated = await this.calculatePoints(rule.calculation, transaction);
+        }
+
+        const executionTime = Date.now() - startTime;
+
+        results.push({
+          transactionId: transaction.id,
+          ruleId: rule.id,
+          ruleType: 'bonus',
+          passed,
+          pointsAllocated,
+          executionTime,
+          ruleDetails: rule
+        });
+
+      } catch (error) {
+        const executionTime = Date.now() - startTime;
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        
+        results.push({
+          transactionId: transaction.id,
+          ruleId: rule.id,
+          ruleType: 'bonus',
+          passed: false,
+          pointsAllocated: 0,
+          errorMessage: errorMsg,
+          executionTime,
+          ruleDetails: rule
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Evaluate a rule condition
+   */
+  private async evaluateRuleCondition(condition: RuleCondition, transaction: CampaignTransaction): Promise<boolean> {
+    switch (condition.type) {
+      case 'fieldComparison':
+        return this.evaluateFieldComparison(condition, transaction);
       
-      switch (rule.type) {
-        case 'individual':
-          actualValue = this.calculateIndividualGoalValue(transactionData, rule);
-          passed = actualValue >= rule.targetValue;
-          if (passed) {
-            pointsAllocated = rule.bonusPoints || 0;
-          }
+      case 'aggregate':
+        return await this.evaluateAggregateCondition(condition, transaction);
+      
+      case 'logical':
+        return this.evaluateLogicalCondition(condition, transaction);
+      
+      case 'custom':
+        return this.evaluateCustomCondition(condition, transaction);
+      
+      default:
+        throw new Error(`Unknown condition type: ${condition.type}`);
+    }
+  }
+
+  /**
+   * Evaluate field comparison condition
+   */
+  private evaluateFieldComparison(condition: RuleCondition, transaction: CampaignTransaction): boolean {
+    if (!condition.field || !condition.operator || condition.value === undefined) {
+      throw new Error('Invalid field comparison condition');
+    }
+
+    const fieldValue = this.getTransactionFieldValue(transaction, condition.field);
+    
+    switch (condition.operator) {
+      case 'equals':
+        return fieldValue === condition.value;
+      case 'notEquals':
+        return fieldValue !== condition.value;
+      case 'greaterThan':
+        return Number(fieldValue) > Number(condition.value);
+      case 'greaterThanOrEqual':
+        return Number(fieldValue) >= Number(condition.value);
+      case 'lessThan':
+        return Number(fieldValue) < Number(condition.value);
+      case 'lessThanOrEqual':
+        return Number(fieldValue) <= Number(condition.value);
+      case 'contains':
+        return String(fieldValue).includes(String(condition.value));
+      case 'startsWith':
+        return String(fieldValue).startsWith(String(condition.value));
+      case 'endsWith':
+        return String(fieldValue).endsWith(String(condition.value));
+      default:
+        throw new Error(`Unknown operator: ${condition.operator}`);
+    }
+  }
+
+  /**
+   * Evaluate aggregate condition
+   */
+  private async evaluateAggregateCondition(condition: RuleCondition, transaction: CampaignTransaction): Promise<boolean> {
+    if (!condition.aggregation || !condition.field || !condition.operator || condition.value === undefined) {
+      throw new Error('Invalid aggregate condition');
+    }
+
+    // For now, we'll evaluate against the current transaction
+    // In a real implementation, you'd query the database for aggregate values
+    const fieldValue = this.getTransactionFieldValue(transaction, condition.field);
+    
+    switch (condition.operator) {
+      case 'gte':
+        return Number(fieldValue) >= Number(condition.value);
+      case 'gt':
+        return Number(fieldValue) > Number(condition.value);
+      case 'lte':
+        return Number(fieldValue) <= Number(condition.value);
+      case 'lt':
+        return Number(fieldValue) < Number(condition.value);
+      case 'eq':
+        return Number(fieldValue) === Number(condition.value);
+      default:
+        throw new Error(`Unknown aggregate operator: ${condition.operator}`);
+    }
+  }
+
+  /**
+   * Evaluate logical condition
+   */
+  private evaluateLogicalCondition(condition: RuleCondition, transaction: CampaignTransaction): boolean {
+    if (!condition.logicalOperator || !condition.subConditions) {
+      throw new Error('Invalid logical condition');
+    }
+
+    const subResults = condition.subConditions.map(subCondition => 
+      this.evaluateRuleCondition(subCondition, transaction)
+    );
+
+    switch (condition.logicalOperator) {
+      case 'AND':
+        return subResults.every(result => result);
+      case 'OR':
+        return subResults.some(result => result);
+      default:
+        throw new Error(`Unknown logical operator: ${condition.logicalOperator}`);
+    }
+  }
+
+  /**
+   * Evaluate custom condition
+   */
+  private evaluateCustomCondition(condition: RuleCondition, transaction: CampaignTransaction): boolean {
+    // Custom conditions would be implemented based on business requirements
+    // For now, return false as a safe default
+    logger.warn('Custom condition evaluation not implemented:', { condition });
+    return false;
+  }
+
+  /**
+   * Calculate points based on rule calculation
+   */
+  private async calculatePoints(calculation: RuleCalculation, transaction: CampaignTransaction): Promise<number> {
+    switch (calculation.type) {
+      case 'mathematical':
+        return this.calculateMathematicalPoints(calculation, transaction);
+      
+      case 'fixed':
+        return calculation.points || 0;
+      
+      case 'percentage':
+        return this.calculatePercentagePoints(calculation, transaction);
+      
+      case 'custom':
+        return this.calculateCustomPoints(calculation, transaction);
+      
+      default:
+        throw new Error(`Unknown calculation type: ${calculation.type}`);
+    }
+  }
+
+  /**
+   * Calculate mathematical points
+   */
+  private calculateMathematicalPoints(calculation: RuleCalculation, transaction: CampaignTransaction): number {
+    if (!calculation.fields || !calculation.multiplier) {
+      throw new Error('Invalid mathematical calculation');
+    }
+
+    let totalValue = 0;
+    for (const field of calculation.fields) {
+      const fieldValue = this.getTransactionFieldValue(transaction, field);
+      totalValue += Number(fieldValue) || 0;
+    }
+
+    let result = totalValue * calculation.multiplier;
+
+    // Apply rounding if specified
+    if (calculation.rounding) {
+      switch (calculation.rounding) {
+        case 'floor':
+          result = Math.floor(result);
           break;
-          
-        case 'overall':
-          actualValue = this.calculateOverallGoalValue(transactionData, rule);
-          passed = actualValue >= rule.targetValue;
-          if (passed) {
-            pointsAllocated = rule.bonusPoints || 0;
-          }
+        case 'ceil':
+          result = Math.ceil(result);
           break;
-          
-        default:
-          throw new Error(`Unknown goal rule type: ${rule.type}`);
+        case 'round':
+          result = Math.round(result);
+          break;
       }
-
-      const executionTime = Date.now() - startTime;
-
-      return {
-        transactionId: transaction.id,
-        ruleId: rule.id,
-        ruleType: 'goal',
-        passed,
-        actualValue,
-        expectedValue: rule.targetValue,
-        pointsAllocated,
-        executionTime
-      };
-
-    } catch (error) {
-      const executionTime = Date.now() - startTime;
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      
-      logger.error('Goal rule evaluation failed:', {
-        ruleId: rule.id,
-        error: errorMsg
-      });
-
-      return {
-        transactionId: transaction.id,
-        ruleId: rule.id,
-        ruleType: 'goal',
-        passed: false,
-        pointsAllocated: 0,
-        errorMessage: errorMsg,
-        executionTime
-      };
     }
+
+    return Math.max(0, result); // Ensure non-negative
   }
 
-  private async evaluateEligibilityRule(
-    transaction: CampaignTransaction, 
-    rule: any
-  ): Promise<RuleEvaluationResult> {
-    const startTime = Date.now();
+  /**
+   * Calculate percentage points
+   */
+  private calculatePercentagePoints(calculation: RuleCalculation, transaction: CampaignTransaction): number {
+    if (!calculation.percentage || !calculation.fields) {
+      throw new Error('Invalid percentage calculation');
+    }
+
+    let totalValue = 0;
+    for (const field of calculation.fields) {
+      const fieldValue = this.getTransactionFieldValue(transaction, field);
+      totalValue += Number(fieldValue) || 0;
+    }
+
+    return Math.max(0, (totalValue * calculation.percentage) / 100);
+  }
+
+  /**
+   * Calculate custom points
+   */
+  private calculateCustomPoints(calculation: RuleCalculation, transaction: CampaignTransaction): number {
+    // Custom calculation logic would be implemented based on business requirements
+    logger.warn('Custom point calculation not implemented:', { calculation });
+    return 0;
+  }
+
+  /**
+   * Get transaction field value
+   */
+  private getTransactionFieldValue(transaction: CampaignTransaction, fieldName: string): any {
+    // Access the transaction data based on the field name
+    // This assumes transaction.transactionData is a JSON object
+    if (transaction.transactionData && typeof transaction.transactionData === 'object') {
+      return (transaction.transactionData as any)[fieldName];
+    }
     
+    // Fallback to direct property access
+    return (transaction as any)[fieldName];
+  }
+
+  /**
+   * Generate accrual API call
+   */
+  private generateAccrualAPICall(result: RuleEvaluationResult, transaction: CampaignTransaction): AccrualAPICall | null {
+    if (!result.passed || result.pointsAllocated <= 0) {
+      return null;
+    }
+
+    return {
+      ruleId: result.ruleId,
+      ruleName: result.ruleDetails.name,
+      points: result.pointsAllocated,
+      apiEndpoint: '/api/tlp/accruals',
+      requestBody: {
+        campaignId: transaction.campaignId,
+        userId: (transaction as any).userId || 'unknown',
+        points: result.pointsAllocated,
+        ruleId: result.ruleId,
+        transactionId: transaction.id,
+        description: `${result.ruleDetails.name}: ${result.pointsAllocated} points`,
+        metadata: {
+          ruleType: result.ruleType,
+          ruleDescription: result.ruleDetails.description,
+          transactionData: transaction.transactionData
+        }
+      },
+      priority: result.ruleDetails.priority || 1
+    };
+  }
+
+  /**
+   * Get total rule count
+   */
+  private getTotalRuleCount(): number {
+    return (
+      this.ruleSet.rules.eligibility.length +
+      this.ruleSet.rules.accrual.length +
+      this.ruleSet.rules.bonus.length
+    );
+  }
+
+  /**
+   * Get all rules for a campaign
+   */
+  async getCampaignRules(campaignId: string) {
     try {
-      logger.debug('Evaluating eligibility rule:', { ruleId: rule.id });
-
-      const transactionData = transaction.transactionData as any;
-      const passed = this.evaluateEligibilityCondition(transactionData, rule.conditions);
-      const executionTime = Date.now() - startTime;
-
-      return {
-        transactionId: transaction.id,
-        ruleId: rule.id,
-        ruleType: 'eligibility',
-        passed,
-        pointsAllocated: 0,
-        executionTime
-      };
-
-    } catch (error) {
-      const executionTime = Date.now() - startTime;
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      
-      logger.error('Eligibility rule evaluation failed:', {
-        ruleId: rule.id,
-        error: errorMsg
+      const rules = await prisma.campaignRule.findMany({
+        where: { campaignId },
+        orderBy: { createdAt: 'desc' }
       });
 
-      return {
-        transactionId: transaction.id,
-        ruleId: rule.id,
-        ruleType: 'eligibility',
-        passed: false,
-        pointsAllocated: 0,
-        errorMessage: errorMsg,
-        executionTime
-      };
+      return rules;
+    } catch (error) {
+      logger.error('Failed to retrieve campaign rules:', error);
+      throw new Error(`Failed to retrieve campaign rules: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  private async evaluatePrizeRule(
-    transaction: CampaignTransaction, 
-    rule: any
-  ): Promise<RuleEvaluationResult> {
-    const startTime = Date.now();
-    
+  /**
+   * Get all schemas for a campaign
+   */
+  async getCampaignSchemas(campaignId: string) {
     try {
-      logger.debug('Evaluating prize rule:', { ruleId: rule.id });
+      const schemas = await prisma.campaignSchema.findMany({
+        where: { campaignId },
+        orderBy: { createdAt: 'desc' }
+      });
 
-      const transactionData = transaction.transactionData as any;
-      const passed = this.evaluatePrizeCondition(transactionData, rule.conditions);
-      const pointsAllocated = passed ? rule.pointValue * (transactionData.amount || 0) : 0;
-      const executionTime = Date.now() - startTime;
-
-      return {
-        transactionId: transaction.id,
-        ruleId: rule.id,
-        ruleType: 'prize',
-        passed,
-        actualValue: transactionData.amount,
-        expectedValue: rule.minimumValue,
-        pointsAllocated,
-        executionTime
-      };
-
+      return schemas;
     } catch (error) {
-      const executionTime = Date.now() - startTime;
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      
-      logger.error('Prize rule evaluation failed:', {
-        ruleId: rule.id,
-        error: errorMsg
-      });
-
-      return {
-        transactionId: transaction.id,
-        ruleId: rule.id,
-        ruleType: 'prize',
-        passed: false,
-        pointsAllocated: 0,
-        errorMessage: errorMsg,
-        executionTime
-      };
-    }
-  }
-
-  private calculateIndividualGoalValue(transactionData: any, rule: any): number {
-    // TODO: Implement actual individual goal calculation logic
-    // This would typically involve looking up the user's progress toward their individual goal
-    
-    // Mock implementation
-    return transactionData.amount || 0;
-  }
-
-  private calculateOverallGoalValue(transactionData: any, rule: any): number {
-    // TODO: Implement actual overall goal calculation logic
-    // This would typically involve looking up the campaign's overall progress
-    
-    // Mock implementation
-    return transactionData.amount || 0;
-  }
-
-  private evaluateEligibilityCondition(transactionData: any, condition: any): boolean {
-    // TODO: Implement actual eligibility condition evaluation
-    // This would parse and evaluate complex conditions like "status = 'paid' AND amount > 100"
-    
-    // Mock implementation
-    if (condition.field === 'status') {
-      return transactionData.status === condition.value;
-    }
-    if (condition.field === 'amount') {
-      return transactionData.amount >= condition.value;
-    }
-    
-    return true; // Default to eligible
-  }
-
-  private evaluatePrizeCondition(transactionData: any, condition: any): boolean {
-    // TODO: Implement actual prize condition evaluation
-    
-    // Mock implementation
-    if (condition.field === 'status') {
-      return transactionData.status === condition.value;
-    }
-    if (condition.field === 'amount') {
-      return transactionData.amount >= condition.value;
-    }
-    
-    return true; // Default to eligible
-  }
-
-  async validateRules(): Promise<{ valid: boolean; errors: string[] }> {
-    const errors: string[] = [];
-
-    try {
-      // Validate goal rules
-      if (!this.rules.rules.goalRules || this.rules.rules.goalRules.length === 0) {
-        errors.push('No goal rules defined');
-      }
-
-      // Validate eligibility rules
-      if (!this.rules.rules.eligibilityRules || this.rules.rules.eligibilityRules.length === 0) {
-        errors.push('No eligibility rules defined');
-      }
-
-      // Validate prize rules
-      if (!this.rules.rules.prizeRules || this.rules.rules.prizeRules.length === 0) {
-        errors.push('No prize rules defined');
-      }
-
-      // Validate rule structure
-      this.rules.rules.goalRules?.forEach((rule, index) => {
-        if (!rule.type) errors.push(`Goal rule ${index}: Missing type`);
-        if (!rule.targetValue) errors.push(`Goal rule ${index}: Missing target value`);
-      });
-
-      this.rules.rules.eligibilityRules?.forEach((rule, index) => {
-        if (!rule.description) errors.push(`Eligibility rule ${index}: Missing description`);
-        if (!rule.conditions) errors.push(`Eligibility rule ${index}: Missing conditions`);
-      });
-
-      this.rules.rules.prizeRules?.forEach((rule, index) => {
-        if (!rule.description) errors.push(`Prize rule ${index}: Missing description`);
-        if (!rule.conditions) errors.push(`Prize rule ${index}: Missing conditions`);
-        if (!rule.pointValue) errors.push(`Prize rule ${index}: Missing point value`);
-      });
-
-      const isValid = errors.length === 0;
-
-      logger.info('Rules validation completed:', { 
-        isValid, 
-        errorCount: errors.length 
-      });
-
-      return { valid: isValid, errors };
-
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      errors.push(`Validation error: ${errorMsg}`);
-      
-      logger.error('Rules validation failed:', error);
-      return { valid: false, errors };
+      logger.error('Failed to retrieve campaign schemas:', error);
+      throw new Error(`Failed to retrieve campaign schemas: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }
