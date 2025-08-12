@@ -475,11 +475,11 @@ export interface PrizeRule {
 }
 
 export interface GeneratedCode {
-  dataExtractionQuery: string
-  rulesApplicationLogic: string
-  tlpIntegrationCode: string
-  microserviceCode: string
-  testCode: string
+  dataExtractionQuery?: string
+  rulesApplicationLogic?: string
+  tlpIntegrationCode?: string
+  microserviceCode?: string
+  testCode?: string
 }
 
 // ============================================================================
@@ -501,10 +501,10 @@ export interface SchemaAnalysis {
 
 
 export interface GeneratedCode {
-  typescript: string
-  sql: string
-  validation: string
-  documentation: string
+  typescript?: string
+  sql?: string
+  validation?: string
+  documentation?: string
 }
 
 // ============================================================================

@@ -167,7 +167,7 @@ router.get('/campaign/:campaignId/queue', requireAdmin, asyncHandler(async (req:
     logger.error('Failed to retrieve processing queue:', error);
     throw createError('Failed to retrieve processing queue', 500);
   }
-});
+}));
 
 // Manually process a transaction
 router.post('/:transactionId/process', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
@@ -187,7 +187,7 @@ router.post('/:transactionId/process', requireAdmin, asyncHandler(async (req: Re
     logger.error('Failed to process transaction:', error);
     throw createError('Failed to process transaction', 500);
   }
-});
+}));
 
 // Get transaction error details
 router.get('/:transactionId/errors', requireAdmin, asyncHandler(async (req: Request, res: Response) => {

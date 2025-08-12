@@ -16,7 +16,7 @@ import { healthRoutes } from './controllers/healthController';
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3002;
+const port = process.env['PORT'] || 3002;
 
 // Initialize Prisma client
 export const prisma = new PrismaClient({
@@ -57,7 +57,7 @@ process.on('SIGINT', async () => {
 // Start server
 app.listen(port, () => {
   logger.info(`🚀 Rules Engine Service started on port ${port}`);
-  logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.info(`📊 Environment: ${process.env['NODE_ENV'] || 'development'}`);
   logger.info(`🔗 Health check: http://localhost:${port}/health`);
 });
 

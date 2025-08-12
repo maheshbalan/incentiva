@@ -58,10 +58,10 @@ export class AIService {
       const rules = this.parseGeneratedRules(response.completion);
       
       logger.info('Rules generation completed', {
-        goalsCount: rules.goals.length,
-        eligibilityCount: rules.eligibility.length,
-        prizesCount: rules.prizes.length,
-        validationErrors: rules.validationErrors.length
+        goalsCount: rules.rules?.goalRules?.length || 0,
+        eligibilityCount: rules.rules?.eligibilityRules?.length || 0,
+        prizesCount: rules.rules?.prizeRules?.length || 0,
+        understandingScore: rules.understandingScore
       });
 
       return rules;
@@ -299,11 +299,16 @@ The graphic should be appealing and motivate users to participate in the campaig
       const data = JSON.parse(jsonMatch[0]);
       
       return {
-        goals: data.goals || [],
-        eligibility: data.eligibility || [],
-        prizes: data.prizes || [],
-        generatedCode: data.generatedCode || '',
-        validationErrors: data.validationErrors || []
+        campaignId: data.campaignId || '',
+        schema: data.schema || { tables: [], relationships: [], understandingScore: 0, feedback: '' },
+        rules: {
+          goalRules: data.rules?.goalRules || [],
+          eligibilityRules: data.rules?.eligibilityRules || [],
+          prizeRules: data.rules?.prizeRules || []
+        },
+        generatedCode: data.generatedCode || {},
+        understandingScore: data.understandingScore || 0,
+        feedback: data.feedback || ''
       };
     } catch (error) {
       logger.error('Failed to parse generated rules:', error);
@@ -321,11 +326,17 @@ The graphic should be appealing and motivate users to participate in the campaig
       const data = JSON.parse(jsonMatch[0]);
       
       return {
+        // unified shape for GeneratedCode, map optional fields if present
         typescript: data.typescript || '',
         sql: data.sql || '',
         validation: data.validation || '',
-        documentation: data.documentation || ''
-      };
+        documentation: data.documentation || '',
+        dataExtractionQuery: data.dataExtractionQuery || '',
+        rulesApplicationLogic: data.rulesApplicationLogic || '',
+        tlpIntegrationCode: data.tlpIntegrationCode || '',
+        microserviceCode: data.microserviceCode || '',
+        testCode: data.testCode || ''
+      } as any;
     } catch (error) {
       logger.error('Failed to parse generated code:', error);
       throw new Error('Failed to parse code response');

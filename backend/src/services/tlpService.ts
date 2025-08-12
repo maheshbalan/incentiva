@@ -3,8 +3,7 @@ import { logger } from '../utils/logger';
 import { 
   TLPPointType, 
   TLPOffer, 
-  TLPTransaction, 
-  TLPMember 
+  TLPTransaction
 } from '@incentiva/shared';
 
 export class TLPService {
@@ -210,7 +209,7 @@ export class TLPService {
   }
 
   // Member Management
-  async createMember(member: TLPMember): Promise<TLPMember> {
+  async createMember(member: any): Promise<any> {
     try {
       const response = await this.client.post('/members', member);
       logger.info('Member created', { memberId: response.data.id });
@@ -221,7 +220,7 @@ export class TLPService {
     }
   }
 
-  async updateMember(id: string, member: Partial<TLPMember>): Promise<TLPMember> {
+  async updateMember(id: string, member: any): Promise<any> {
     try {
       const response = await this.client.put(`/members/${id}`, member);
       logger.info('Member updated', { memberId: id });
@@ -232,7 +231,7 @@ export class TLPService {
     }
   }
 
-  async getMember(id: string): Promise<TLPMember> {
+  async getMember(id: string): Promise<any> {
     try {
       const response = await this.client.get(`/members/${id}`);
       return response.data;
@@ -242,7 +241,7 @@ export class TLPService {
     }
   }
 
-  async listMembers(filters?: Record<string, any>): Promise<TLPMember[]> {
+  async listMembers(filters?: Record<string, any>): Promise<any[]> {
     try {
       const response = await this.client.get('/members', { params: filters });
       return response.data;

@@ -340,20 +340,20 @@ router.post('/:id/rules', authenticateJWT, requireAdmin, async (req: Authenticat
 
     // Save generated rules
     const savedRules = await Promise.all(
-      rules.goals.map(goal => 
+      (rules.rules?.goalRules || []).map(goal => 
         prisma.campaignRule.create({
           data: {
             campaignId: id,
             ruleType: RuleType.GOAL,
             ruleDefinition: JSON.stringify(goal),
-            generatedCode: rules.generatedCode
+            generatedCode: rules.generatedCode?.typescript || rules.generatedCode?.microserviceCode || ''
           }
         })
       )
     );
 
     await Promise.all(
-      rules.eligibility.map(eligibility =>
+      (rules.rules?.eligibilityRules || []).map(eligibility =>
         prisma.campaignRule.create({
           data: {
             campaignId: id,
@@ -365,7 +365,7 @@ router.post('/:id/rules', authenticateJWT, requireAdmin, async (req: Authenticat
     );
 
     await Promise.all(
-      rules.prizes.map(prize =>
+      (rules.rules?.prizeRules || []).map(prize =>
         prisma.campaignRule.create({
           data: {
             campaignId: id,
@@ -378,8 +378,8 @@ router.post('/:id/rules', authenticateJWT, requireAdmin, async (req: Authenticat
 
     logger.info('Rules generated', { 
       campaignId: id, 
-      goalsCount: rules.goals.length,
-      prizesCount: rules.prizes.length
+      goalsCount: rules.rules?.goalRules?.length || 0,
+      prizesCount: rules.rules?.prizeRules?.length || 0
     });
 
     res.json({

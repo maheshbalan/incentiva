@@ -52,6 +52,9 @@ COPY shared/ ./shared/
 # Copy backend
 COPY backend/ ./backend/
 
+# Remove environment files to prevent overriding docker-compose env vars
+RUN rm -f ./backend/env.*
+
 # Copy built frontend from frontend-builder stage
 COPY --from=frontend-builder /app/frontend/dist ./backend/public
 

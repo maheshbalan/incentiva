@@ -434,7 +434,11 @@ Return only valid JSON, no additional text.`;
         rulesApplicationLogic: parsed.rulesApplicationLogic || '',
         tlpIntegrationCode: parsed.tlpIntegrationCode || '',
         microserviceCode: parsed.microserviceCode || '',
-        testCode: parsed.testCode || ''
+        testCode: parsed.testCode || '',
+        typescript: parsed.typescript || '',
+        sql: parsed.sql || '',
+        validation: parsed.validation || '',
+        documentation: parsed.documentation || ''
       };
     } catch (error) {
       logger.error('Failed to parse generated code:', error);
