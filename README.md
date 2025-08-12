@@ -10,7 +10,7 @@
 
 Incentiva is a comprehensive AI-powered loyalty campaign management platform that enables businesses to create, manage, and execute sophisticated loyalty programs. The system integrates with Pravici TLP for point management and uses AI models (Anthropic Claude, OpenAI GPT, Google Gemini) for intelligent campaign rule generation and execution.
 
-**🚀 NEW: Complete Rules Engine Implementation** - The system now includes a sophisticated rules engine microservice that processes loyalty campaigns using AI-generated rules and code. See [Rules Engine Documentation](RULES_ENGINE_README.md) for complete details.
+**🚀 NEW: Complete Campaign Execution System** - The system now includes a comprehensive campaign execution workflow with TLP integration, transaction processing, and real-time monitoring. See [Campaign Execution Features](#-campaign-execution-system-new) for complete details.
 
 ## ✨ Key Features
 
@@ -18,9 +18,21 @@ Incentiva is a comprehensive AI-powered loyalty campaign management platform tha
 - **Multi-Step Campaign Creation**: 6-step wizard for comprehensive campaign setup
 - **Points Allocation System**: Configurable points per value, bonuses, and currency support
 - **Goal Management**: Individual and overall campaign goals with multiple currency support
+- **Total Points Minted**: NEW! Specify total campaign points allocation
 - **Eligibility Rules**: Custom criteria for participant qualification
 - **Rewards Configuration**: Detailed redemption options and point values
 - **Campaign Lifecycle**: Draft → Review → Execute → Monitor workflow
+
+### 🚀 **Campaign Execution System (NEW!)**
+- **7-Step Execution Process**: Complete workflow from TLP setup to transaction processing
+- **TLP Point Type Creation**: Automated point type and value setup
+- **Point Minting**: Campaign-specific point allocation
+- **Accrual Offers**: Dynamic offers based on campaign rules
+- **Redemption Offers**: AI-generated reward options
+- **Member Creation**: Automated TLP member setup
+- **Transaction Schema Analysis**: AI-powered database understanding
+- **SQL Artifacts Generation**: One-time and incremental load scripts
+- **Data Load Scheduling**: Automated processing schedules
 
 ### 🤖 **AI Integration**
 - **Schema Analysis**: AI-powered database schema understanding and mapping
@@ -28,8 +40,9 @@ Incentiva is a comprehensive AI-powered loyalty campaign management platform tha
 - **Code Generation**: Automated microservice creation for campaign execution
 - **Multi-Model Support**: Anthropic Claude, OpenAI GPT, Google Gemini
 - **Intelligent Processing**: Automated point allocation and goal tracking
+- **TLP Documentation Integration**: Uses TLP API documentation for intelligent offer generation
 
-### 🚀 **Rules Engine (NEW!)**
+### 🚀 **Rules Engine**
 - **AI-Powered Rule Processing**: Converts natural language to executable TypeScript rules
 - **Microservice Architecture**: Separate container for high-performance transaction processing
 - **Automated Code Generation**: Creates complete microservices using Anthropic Claude
@@ -57,6 +70,15 @@ Incentiva is a comprehensive AI-powered loyalty campaign management platform tha
 - **TLP Integration**: Full Pravici TLP API integration
 - **Transaction History**: Complete audit trail and reporting
 
+### 📊 **Transaction Processing (NEW!)**
+- **Transaction Table**: Comprehensive view of all campaign transactions
+- **Status Tracking**: PENDING, PROCESSING, COMPLETED, FAILED, RETRY
+- **Action Management**: Track all actions taken on transactions
+- **Response Logging**: Store TLP API calls and responses
+- **JSON Metadata**: Rich transaction data with expandable details
+- **Rules Engine Integration**: Background processing through AI-powered rules
+- **Real-Time Updates**: Live status and action tracking
+
 ## 🏗️ Architecture
 
 ### **System Overview**
@@ -64,12 +86,16 @@ Incentiva is a comprehensive AI-powered loyalty campaign management platform tha
 ┌─────────────────────────────────────────────────────────────┐
 │                    Incentiva System                        │
 ├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
-│  │   Frontend      │  │    Backend      │  │Rules Engine │ │
-│  │   (Port 3000)   │  │   (Port 3001)   │  │(Port 3002)  │ │
-│  └─────────────────┘  └─────────────────┘  └─────────────┘ │
-│           │                    │                    │       │
-│           └────────────────────┼────────────────────┘       │
+│  ┌─────────────────────────────────┐  ┌─────────────────┐ │
+│  │        Backend + Frontend       │  │  Rules Engine   │ │
+│  │         (Port 3001)             │  │   (Port 3002)   │ │
+│  │  ┌─────────────┐ ┌─────────────┐ │  └─────────────────┘ │
+│  │  │  Backend    │ │  Frontend   │ │                    │
+│  │  │   API       │ │   (React)   │ │                    │
+│  │  └─────────────┘ └─────────────┘ │                    │
+│  └─────────────────────────────────┘ │                    │
+│           │                    │       │                    │
+│           └────────────────────┼───────┘                    │
 │                                │                            │
 │                    ┌─────────────────┐                      │
 │                    │   PostgreSQL    │                      │
@@ -80,10 +106,11 @@ Incentiva is a comprehensive AI-powered loyalty campaign management platform tha
 
 ### **Frontend (React 18 + TypeScript)**
 - **UI Framework**: Material-UI with custom theme
-- **State Management**: Zustand for local state, React Query for server state
+- **State Management**: React hooks for local state and API integration
 - **Form Handling**: React Hook Form with validation
 - **Routing**: React Router with protected routes
-- **Real-Time**: WebSocket integration for live updates
+- **Real-Time**: Live updates and progress tracking
+- **Serving**: Frontend is built and served through the backend container on port 3001
 
 ### **Backend (Node.js + Express + TypeScript)**
 - **API Framework**: Express.js with TypeScript
@@ -92,7 +119,7 @@ Incentiva is a comprehensive AI-powered loyalty campaign management platform tha
 - **Validation**: Zod schema validation
 - **Rate Limiting**: Express rate limit protection
 
-### **Rules Engine Microservice (NEW!)**
+### **Rules Engine Microservice**
 - **Container**: Dedicated microservice (Port 3002)
 - **Framework**: Express.js with TypeScript
 - **AI Integration**: Anthropic Claude 3.5 Sonnet
@@ -100,6 +127,8 @@ Incentiva is a comprehensive AI-powered loyalty campaign management platform tha
 - **Transaction Processing**: Batch processing with retry mechanisms
 - **TLP Integration**: Automated point allocation and tracking
 - **Performance**: Configurable batch sizes and concurrency control
+- **Health Monitoring**: `/health` and `/health/detailed` endpoints
+- **API Documentation**: Complete REST API for rules processing
 
 ### **Database Layer**
 - **Primary Database**: PostgreSQL for application data
@@ -225,6 +254,7 @@ docker exec -i incentiva-postgres psql -U incentiva -d incentiva_dev < backend/p
 ANTHROPIC_API_KEY=your_anthropic_key
 TLP_API_KEY=your_tlp_api_key
 TLP_ENDPOINT_URL=https://exata-customer.pravici.io
+TLP_API_DOCUMENTATION_URL=https://www.dropbox.com/scl/fi/iejr38e2qsyrlu3eoiqy1/Pravici_TLP_API_Reference.pdf
 
 # Backend (for local dev only, not used by docker-compose)
 DATABASE_URL=postgresql://incentiva:incentiva@localhost:5432/incentiva_dev
@@ -283,17 +313,38 @@ cd shared && rm -rf src/*.js src/*.d.ts src/*.map dist/ tsconfig.tsbuildinfo && 
 
 ### **Admin Dashboard**
 - **User Management**: Create, edit, delete users and participants
-- **Campaign Management**: View, edit, and execute campaigns
+- **Campaign Management**: View, edit, execute, and monitor campaigns
 - **AI Model Configuration**: Manage AI service providers and API keys
 - **System Settings**: Global configuration and preferences
 
 ### **Campaign Creation Wizard**
 1. **Basic Information**: Name, description, dates
-2. **Goals & Rewards**: Individual/overall goals, points allocation
+2. **Goals & Rewards**: Individual/overall goals, points allocation, **Total Points Minted**
 3. **Eligibility & Rules**: Participant criteria and campaign rules
-4. **TLP Configuration**: Pravici TLP API integration
+4. **TLP Configuration**: Pravici TLP API integration (auto-prefilled with default endpoint)
 5. **Database Connection**: External database configuration
 6. **Review & Create**: Final validation and campaign creation
+
+### **Campaign Management Interface (NEW!)**
+- **Campaign List**: Table view with status, progress, and action buttons
+- **Execute Campaign**: Launch comprehensive campaign execution workflow
+- **View Transactions**: Access transaction table and processing status
+- **Manage Participants**: Assign and track campaign participants
+- **Edit Campaign**: Modify campaign settings and rules
+
+### **Campaign Execution Workflow (NEW!)**
+- **7-Step Process**: Visual stepper showing execution progress
+- **TLP Artifacts Table**: Complete record of all TLP API calls and responses
+- **Transaction Schema Analysis**: AI-generated database understanding
+- **SQL Artifacts**: One-time and incremental load scripts
+- **Data Load Scheduling**: Automated processing configuration
+
+### **Transaction Table (NEW!)**
+- **Comprehensive View**: All campaign transactions with status tracking
+- **Action Management**: Track all actions taken on each transaction
+- **Response Logging**: Store TLP API calls and responses
+- **JSON Metadata**: Rich transaction data with expandable details
+- **Rules Engine Integration**: Background processing through AI-powered rules
 
 ### **Participant Dashboard**
 - **My Campaigns**: Enrolled campaigns and progress
@@ -315,6 +366,7 @@ POST /api/campaigns
 GET /api/campaigns/:id
 PUT /api/campaigns/:id
 POST /api/campaigns/:id/execute
+PATCH /api/campaigns/:id/status
 DELETE /api/campaigns/:id
 
 # Users
@@ -328,6 +380,10 @@ POST /api/users/:id/reset-password
 POST /api/ai/analyze-schema
 POST /api/ai/generate-rules
 POST /api/ai/generate-code
+
+# TLP Integration
+POST /api/tlp/configure
+GET /api/tlp/health
 ```
 
 ### **Rules Engine API (Port 3002)**
@@ -390,17 +446,24 @@ incentiva/
 │   ├── src/
 │   │   ├── components/      # Reusable UI components
 │   │   ├── pages/          # Application pages
+│   │   │   ├── CampaignsPage.tsx           # Campaign listing and management
+│   │   │   ├── CreateCampaignPage.tsx      # Campaign creation wizard
+│   │   │   ├── CampaignExecutionPage.tsx   # 🚀 NEW: Campaign execution workflow
+│   │   │   └── TransactionTablePage.tsx    # 🚀 NEW: Transaction processing view
 │   │   ├── hooks/          # Custom React hooks
 │   │   ├── services/       # API service layer
 │   │   └── assets/         # Images and static files
 ├── backend/                 # Node.js backend API
 │   ├── src/
 │   │   ├── controllers/    # Request handlers
+│   │   │   └── campaignController.ts       # Enhanced with execution endpoints
 │   │   ├── services/       # Business logic
 │   │   ├── middleware/     # Express middleware
 │   │   └── utils/          # Utility functions
 │   └── prisma/             # Database schema and migrations
-├── rules-engine/            # 🚀 NEW: Rules Engine Microservice
+│       ├── schema.prisma                   # Updated with totalPointsMinted
+│       └── migrations/                     # Database schema evolution
+├── rules-engine/            # Rules Engine Microservice
 │   ├── src/
 │   │   ├── controllers/    # Rules engine API endpoints
 │   │   ├── services/       # AI, job, and transaction services
@@ -409,6 +472,8 @@ incentiva/
 │   ├── Dockerfile          # Container configuration
 │   └── package.json        # Dependencies and scripts
 ├── shared/                  # Shared TypeScript types and utilities
+│   └── src/
+│       └── types.ts                        # Enhanced with new interfaces
 ├── docker-compose.yml       # Development environment
 └── RULES_ENGINE_README.md   # 📚 Complete rules engine documentation
 ```
@@ -428,7 +493,7 @@ npm run dev          # Start with nodemon
 npm run build        # Build TypeScript
 npm start           # Start production server
 
-# Rules Engine development (NEW!)
+# Rules Engine development
 cd rules-engine
 npm run dev          # Start with ts-node-dev
 npm run build        # Build TypeScript
@@ -496,6 +561,8 @@ DATABASE_URL=postgresql://user:pass@host:5432/db
 JWT_SECRET=production-secret-key
 ANTHROPIC_API_KEY=your_production_api_key
 TLP_API_KEY=your_production_tlp_key
+TLP_ENDPOINT_URL=https://exata-customer.pravici.io
+TLP_API_DOCUMENTATION_URL=your_tlp_api_docs_url
 ```
 
 ## 📊 Monitoring & Logging
@@ -540,15 +607,25 @@ TLP_API_KEY=your_production_tlp_key
 - [x] Schema analysis and mapping
 - [x] Rule generation
 - [x] Code generation and microservices
-- [x] **NEW: Complete Rules Engine Implementation**
+- [x] Complete Rules Engine Implementation
 
-### **Phase 3: Advanced Features** 🚧
+### **Phase 3: Campaign Execution System** ✅
+- [x] **NEW: 7-Step Campaign Execution Workflow**
+- [x] **NEW: TLP Artifacts Creation and Management**
+- [x] **NEW: Transaction Schema Analysis**
+- [x] **NEW: SQL Artifacts Generation**
+- [x] **NEW: Data Load Scheduling**
+- [x] **NEW: Transaction Table with Processing**
+- [x] **NEW: Total Points Minted Field**
+- [x] **NEW: Enhanced Campaign Management Interface**
+
+### **Phase 4: Advanced Features** 🚧
 - [x] Real-time campaign monitoring
 - [ ] Advanced analytics and reporting
 - [ ] Multi-tenant support
 - [ ] API marketplace
 
-### **Phase 4: Enterprise Features** 📋
+### **Phase 5: Enterprise Features** 📋
 - [ ] Advanced security and compliance
 - [ ] Performance optimization
 - [ ] Scalability improvements
@@ -596,20 +673,25 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 🎉 **System Status: Complete Rules Engine Implementation!**
+## 🎉 **System Status: Complete Campaign Execution System!**
 
 Your Incentiva system now includes:
 
 ✅ **Core Platform**: User management, campaign creation, TLP integration  
 ✅ **AI Integration**: Schema analysis, rule generation, code creation  
-✅ **🚀 Rules Engine**: Complete microservice for campaign execution  
+✅ **Rules Engine**: Complete microservice for campaign execution  
+✅ **🚀 Campaign Execution System**: 7-step workflow with TLP integration  
+✅ **Transaction Processing**: Real-time transaction table and processing  
+✅ **Enhanced UI**: Comprehensive campaign management interface  
 ✅ **Sample Database**: Goodyear Mexico with 6.3M MXN sales data  
 ✅ **Documentation**: Comprehensive guides and API references  
 
-**Ready to revolutionize your loyalty campaigns with AI-powered intelligence! 🚀**
+**Ready to revolutionize your loyalty campaigns with AI-powered intelligence and complete execution workflows! 🚀**
 
 **Next Steps:**
 1. Read the [Rules Engine Documentation](RULES_ENGINE_README.md)
-2. Configure your Anthropic API key
-3. Create campaigns with natural language rules
-4. Let AI generate and execute your loyalty programs 
+2. Configure your Anthropic API key and TLP credentials
+3. Create campaigns with the new Total Points Minted field
+4. Execute campaigns through the comprehensive 7-step workflow
+5. Monitor transactions and processing in real-time
+6. Let AI generate and execute your loyalty programs automatically 
