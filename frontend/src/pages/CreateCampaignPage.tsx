@@ -1,28 +1,25 @@
 import React, { useState } from 'react'
 import {
   Box,
-  Typography,
+  Button,
   Card,
   CardContent,
-  Grid,
-  TextField,
-  Button,
+  Container,
   FormControl,
+  Grid,
   InputLabel,
-  Select,
   MenuItem,
-  Stepper,
+  Paper,
+  Select,
   Step,
   StepLabel,
-  FormHelperText,
+  Stepper,
+  TextField,
+  Typography,
   Alert,
-  Chip,
   Divider
 } from '@mui/material'
-import { useForm, Controller } from 'react-hook-form'
-import { DatePicker } from '@mui/x-date-pickers/DatePicker'
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
+import { Controller, useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { SUPPORTED_CURRENCIES, CampaignFormData } from '@incentiva/shared'
 
@@ -44,7 +41,19 @@ const CreateCampaignPage: React.FC = () => {
       overallGoalCurrency: 'MXN',
       eligibilityCriteria: '',
       tlpApiKey: '',
-      tlpEndpointUrl: ''
+      tlpEndpointUrl: '',
+      pointsPerDollar: 1, // Default for points per dollar
+      pointValue: 1, // Default for point value
+      pointValueCurrency: 'MXN', // Default for point value currency
+      individualGoalBonus: 0, // Default for individual goal bonus
+      overallGoalBonus: 0, // Default for overall goal bonus
+      rewards: '', // Default for rewards description
+      databaseType: 'postgres', // Default for database type
+      databaseHost: 'localhost', // Default for database host
+      databasePort: 5432, // Default for database port
+      databaseName: 'incentiva', // Default for database name
+      databaseUsername: 'postgres', // Default for database username
+      databasePassword: 'postgres' // Default for database password
     },
     mode: 'onBlur'
   })
@@ -68,9 +77,10 @@ const CreateCampaignPage: React.FC = () => {
 
   const steps = [
     'Basic Information',
-    'Campaign Goals',
+    'Goals & Rewards',
     'Eligibility & Rules',
     'TLP Configuration',
+    'Database Connection',
     'Review & Create'
   ]
 
@@ -114,11 +124,25 @@ const CreateCampaignPage: React.FC = () => {
         throw new Error('TLP API key is required when TLP endpoint is provided')
       }
 
+      // Validate points configuration
+      if (!data.pointsPerDollar || data.pointsPerDollar <= 0) {
+        throw new Error('Points per dollar must be greater than 0')
+      }
+
+      if (!data.pointValue || data.pointValue <= 0) {
+        throw new Error('Point value must be greater than 0')
+      }
+
+      if (!data.rewards) {
+        throw new Error('Rewards description is required')
+      }
+
       // Prepare data for submission
       const submissionData = {
         ...data,
         startDate: startDate.toISOString(),
-        endDate: endDate.toISOString()
+        endDate: endDate.toISOString(),
+        status: 'DRAFT' // Save as draft first
       }
 
       console.log('Submitting formatted data:', submissionData)
@@ -144,7 +168,9 @@ const CreateCampaignPage: React.FC = () => {
       console.log('Campaign creation result:', result)
       
       if (result.success) {
-        navigate(`/campaigns/${result.data.id}`)
+        // Show success message and redirect to campaign management
+        alert('Campaign created successfully as DRAFT! You can now execute it from the Campaign Management screen.')
+        navigate('/admin') // Redirect to admin page with campaign management
       } else {
         throw new Error(result.error || 'Failed to create campaign')
       }
@@ -307,11 +333,7 @@ const CreateCampaignPage: React.FC = () => {
                     <Select {...field} label="Currency">
                       {SUPPORTED_CURRENCIES.map((currency) => (
                         <MenuItem key={currency.code} value={currency.code}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <span>{currency.symbol}</span>
-                            <span>{currency.name}</span>
-                            <Chip label={currency.code} size="small" variant="outlined" />
-                          </Box>
+                                                     {currency.code} - {currency.name}
                         </MenuItem>
                       ))}
                     </Select>
@@ -331,12 +353,11 @@ const CreateCampaignPage: React.FC = () => {
               <Controller
                 name="overallGoal"
                 control={control}
-                rules={{ min: { value: 0, message: 'Goal must be positive' } }}
                 render={({ field }) => (
                   <TextField
                     {...field}
                     fullWidth
-                    label="Overall Goal Amount"
+                    label="Overall Campaign Goal"
                     type="number"
                     error={!!errors.overallGoal}
                     helperText={errors.overallGoal?.message}
@@ -351,20 +372,138 @@ const CreateCampaignPage: React.FC = () => {
                 name="overallGoalCurrency"
                 control={control}
                 render={({ field }) => (
-                  <FormControl fullWidth>
-                    <InputLabel>Currency</InputLabel>
-                    <Select {...field} label="Currency">
+                  <FormControl fullWidth error={!!errors.overallGoalCurrency}>
+                    <InputLabel>Overall Goal Currency</InputLabel>
+                    <Select {...field} label="Overall Goal Currency">
                       {SUPPORTED_CURRENCIES.map((currency) => (
                         <MenuItem key={currency.code} value={currency.code}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <span>{currency.symbol}</span>
-                            <span>{currency.name}</span>
-                            <Chip label={currency.code} size="small" variant="outlined" />
-                          </Box>
+                          {currency.code} - {currency.name}
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
+                )}
+              />
+            </Grid>
+
+            {/* Points Allocation Section */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1 }}>
+                Points Allocation Configuration
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <Controller
+                name="pointsPerDollar"
+                control={control}
+                rules={{ required: 'Points per dollar is required', min: { value: 0.01, message: 'Must be greater than 0' } }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Points per Dollar"
+                    type="number"
+                    inputProps={{ step: 0.01, min: 0.01 }}
+                    error={!!errors.pointsPerDollar}
+                    helperText={errors.pointsPerDollar?.message || "How many points earned per dollar spent"}
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <Controller
+                name="pointValue"
+                control={control}
+                rules={{ required: 'Point value is required', min: { value: 0.01, message: 'Must be greater than 0' } }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Point Value"
+                    type="number"
+                    inputProps={{ step: 0.01, min: 0.01 }}
+                    error={!!errors.pointValue}
+                    helperText={errors.pointValue?.message || "Monetary value of each point"}
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <Controller
+                name="pointValueCurrency"
+                control={control}
+                render={({ field }) => (
+                  <FormControl fullWidth error={!!errors.pointValueCurrency}>
+                    <InputLabel>Point Value Currency</InputLabel>
+                    <Select {...field} label="Point Value Currency">
+                      {SUPPORTED_CURRENCIES.map((currency) => (
+                        <MenuItem key={currency.code} value={currency.code}>
+                          {currency.code} - {currency.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="individualGoalBonus"
+                control={control}
+                rules={{ min: { value: 0, message: 'Must be 0 or greater' } }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Individual Goal Bonus Points"
+                    type="number"
+                    inputProps={{ min: 0 }}
+                    error={!!errors.individualGoalBonus}
+                    helperText={errors.individualGoalBonus?.message || "Bonus points when individual goal is met"}
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="overallGoalBonus"
+                control={control}
+                rules={{ min: { value: 0, message: 'Must be 0 or greater' } }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Overall Goal Bonus Points"
+                    type="number"
+                    inputProps={{ min: 0 }}
+                    error={!!errors.overallGoalBonus}
+                    helperText={errors.overallGoalBonus?.message || "Bonus points when overall goal is met"}
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Controller
+                name="rewards"
+                control={control}
+                rules={{ required: 'Rewards description is required' }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Rewards & Redemption Options"
+                    multiline
+                    rows={4}
+                    error={!!errors.rewards}
+                    helperText={errors.rewards?.message || "Describe what participants can redeem with their points"}
+                    placeholder="e.g., Gift cards, merchandise, discounts, exclusive experiences..."
+                  />
                 )}
               />
             </Grid>
@@ -495,6 +634,141 @@ const CreateCampaignPage: React.FC = () => {
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom>
+                Database Connection Configuration
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Configure the database connection for your campaign's data storage.
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="databaseType"
+                control={control}
+                render={({ field }) => (
+                  <FormControl fullWidth error={!!errors.databaseType}>
+                    <InputLabel>Database Type</InputLabel>
+                    <Select {...field} label="Database Type">
+                      <MenuItem value="postgres">PostgreSQL</MenuItem>
+                      <MenuItem value="mysql">MySQL</MenuItem>
+                      <MenuItem value="mongodb">MongoDB</MenuItem>
+                    </Select>
+                  </FormControl>
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="databaseHost"
+                control={control}
+                rules={{ required: 'Database host is required' }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Database Host"
+                    error={!!errors.databaseHost}
+                    helperText={errors.databaseHost?.message}
+                    placeholder="e.g., localhost"
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="databasePort"
+                control={control}
+                rules={{ required: 'Database port is required', min: { value: 1, message: 'Must be a positive number' } }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Database Port"
+                    type="number"
+                    error={!!errors.databasePort}
+                    helperText={errors.databasePort?.message}
+                    inputProps={{ min: 1 }}
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="databaseName"
+                control={control}
+                rules={{ required: 'Database name is required' }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Database Name"
+                    error={!!errors.databaseName}
+                    helperText={errors.databaseName?.message}
+                    placeholder="e.g., incentiva"
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="databaseUsername"
+                control={control}
+                rules={{ required: 'Database username is required' }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Database Username"
+                    error={!!errors.databaseUsername}
+                    helperText={errors.databaseUsername?.message}
+                    placeholder="e.g., postgres"
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="databasePassword"
+                control={control}
+                rules={{ required: 'Database password is required' }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Database Password"
+                    type="password"
+                    error={!!errors.databasePassword}
+                    helperText={errors.databasePassword?.message}
+                    placeholder="Enter your database password"
+                    inputProps={{
+                      autocomplete: 'new-password'
+                    }}
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Alert severity="info">
+                <Typography variant="body2">
+                  <strong>Note:</strong> The database connection details will be used to store campaign data, 
+                  user points, and redemption history.
+                </Typography>
+              </Alert>
+            </Grid>
+          </Grid>
+        )
+
+      case 5:
+        return (
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>
                 Review Campaign Details
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
@@ -557,6 +831,27 @@ const CreateCampaignPage: React.FC = () => {
                   <Typography variant="body2">
                     API Key: {watchedValues.tlpApiKey ? '••••••••' : 'Not provided'}
                   </Typography>
+
+                  <Divider sx={{ my: 2 }} />
+
+                  <Typography variant="subtitle1" gutterBottom>
+                    <strong>Database Connection:</strong>
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    Type: {watchedValues.databaseType}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    Host: {watchedValues.databaseHost}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    Port: {watchedValues.databasePort}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    Name: {watchedValues.databaseName}
+                  </Typography>
+                  <Typography variant="body2">
+                    Username: {watchedValues.databaseUsername}
+                  </Typography>
                 </CardContent>
               </Card>
             </Grid>
@@ -578,8 +873,7 @@ const CreateCampaignPage: React.FC = () => {
   }
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
+    <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
         {/* Header with Logo */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
           <Box
@@ -675,7 +969,6 @@ const CreateCampaignPage: React.FC = () => {
           </CardContent>
         </Card>
       </Box>
-    </LocalizationProvider>
   )
 }
 

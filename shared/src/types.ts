@@ -386,6 +386,22 @@ export interface CampaignFormData {
   eligibilityCriteria?: string
   tlpApiKey?: string
   tlpEndpointUrl?: string
+  
+  // Points allocation and rewards
+  pointsPerDollar?: number
+  pointValue?: number
+  pointValueCurrency?: string
+  individualGoalBonus?: number
+  overallGoalBonus?: number
+  rewards?: string
+  
+  // Database connection for campaign execution
+  databaseType?: string
+  databaseHost?: string
+  databasePort?: number
+  databaseName?: string
+  databaseUsername?: string
+  databasePassword?: string
 }
 
 export interface AIModelConfig {
