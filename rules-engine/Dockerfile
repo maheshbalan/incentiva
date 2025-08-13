@@ -68,5 +68,5 @@ EXPOSE 3002
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3002/health || exit 1
 
-# Start the application
-CMD ["npm", "start"]
+# Start the application (use dev mode for development)
+CMD ["npm", "run", "dev"]

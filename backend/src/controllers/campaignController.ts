@@ -78,37 +78,7 @@ router.post('/', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest
   }
 });
 
-// Get all campaigns (for campaigns page)
-router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const campaigns = await prisma.campaign.findMany({
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
 
-    res.json({
-      success: true,
-      data: campaigns
-    });
-  } catch (error) {
-    logger.error('Failed to fetch campaigns:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch campaigns'
-    });
-  }
-});
 
 // List campaigns
 router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
@@ -186,7 +156,6 @@ router.get('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Respo
           select: {
             id: true,
             email: true,
-            firstName: true,
             lastName: true
           }
         },
@@ -203,7 +172,7 @@ router.get('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Respo
 
     res.json({
       success: true,
-      data: campaign
+      campaign: campaign
     });
   } catch (error) {
     logger.error('Failed to fetch campaign:', error);
@@ -699,6 +668,111 @@ router.get('/:id/participants', authenticateJWT, requireAdmin, async (req: Authe
     res.status(500).json({
       success: false,
       error: 'Failed to get participants'
+    });
+  }
+});
+
+// Add participant to campaign
+router.post('/:id/participants', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.body;
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Check if user is already a participant
+    const existingParticipation = await prisma.userCampaign.findUnique({
+      where: {
+        userId_campaignId: {
+          userId,
+          campaignId: id
+        }
+      }
+    });
+
+    if (existingParticipation) {
+      return res.status(400).json({
+        success: false,
+        error: 'User is already a participant in this campaign'
+      });
+    }
+
+    // Add user to campaign
+    const userCampaign = await prisma.userCampaign.create({
+      data: {
+        userId,
+        campaignId: id,
+        currentPoints: 0
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
+    });
+
+    logger.info('Participant added to campaign', { 
+      campaignId: id, 
+      userId 
+    });
+
+    res.json({
+      success: true,
+      data: userCampaign
+    });
+  } catch (error) {
+    logger.error('Add participant failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to add participant'
+    });
+  }
+});
+
+// Remove participant from campaign
+router.delete('/:id/participants/:userId', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id, userId } = req.params;
+
+    // Remove user from campaign
+    await prisma.userCampaign.delete({
+      where: {
+        userId_campaignId: {
+          userId,
+          campaignId: id
+        }
+      }
+    });
+
+    logger.info('Participant removed from campaign', { 
+      campaignId: id, 
+      userId 
+    });
+
+    res.json({
+      success: true,
+      message: 'Participant removed successfully'
+    });
+  } catch (error) {
+    logger.error('Remove participant failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to remove participant'
     });
   }
 });

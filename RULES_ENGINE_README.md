@@ -677,7 +677,7 @@ rules-engine:
     ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     TLP_API_KEY: ${TLP_API_KEY}
     TLP_ENDPOINT_URL: ${TLP_ENDPOINT_URL}
-  ports:
+        ports:
     - "3002:3002"
   depends_on:
     postgres:

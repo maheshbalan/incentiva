@@ -130,7 +130,7 @@ router.post('/login', async (req: Request, res: Response) => {
   }
 });
 
-// Get current user profile
+// Get user profile
 router.get('/profile', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) {
@@ -141,7 +141,16 @@ router.get('/profile', authenticateJWT, async (req: AuthenticatedRequest, res: R
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: req.user.id }
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true
+      }
     });
 
     if (!user) {
@@ -153,21 +162,57 @@ router.get('/profile', authenticateJWT, async (req: AuthenticatedRequest, res: R
 
     res.json({
       success: true,
-      data: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt
-      }
+      data: user
     });
   } catch (error) {
-    logger.error('Profile fetch error:', error);
+    logger.error('Profile retrieval failed:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch profile'
+      error: 'Failed to get profile'
+    });
+  }
+});
+
+// Get all users (admin only)
+router.get('/users', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+
+    // Check if user is admin
+    if (req.user.role !== UserRole.ADMIN) {
+      return res.status(403).json({
+        success: false,
+        error: 'Admin access required'
+      });
+    }
+
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({
+      success: true,
+      data: users
+    });
+  } catch (error) {
+    logger.error('Users retrieval failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get users'
     });
   }
 });

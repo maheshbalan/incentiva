@@ -36,15 +36,12 @@ const CreateCampaignPage: React.FC = () => {
       startDate: new Date().toISOString().split('T')[0], // Use current date as default
       endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
       individualGoal: undefined,
-      individualGoalCurrency: 'MXN',
+      campaignCurrency: 'MXN',
       overallGoal: undefined,
-      overallGoalCurrency: 'MXN',
       eligibilityCriteria: '',
       tlpApiKey: '',
       tlpEndpointUrl: 'https://exata-customer.pravici.io', // Set default TLP endpoint
-      pointsPerDollar: 1, // Default for points per dollar
-      pointValue: 1, // Default for point value
-      pointValueCurrency: 'MXN', // Default for point value currency
+      amountPerPoint: 200, // Default: 200 MXN to get 1 point
       individualGoalBonus: 0, // Default for individual goal bonus
       overallGoalBonus: 0, // Default for overall goal bonus
       totalPointsMinted: 0, // Default for total points minted
@@ -132,12 +129,8 @@ const CreateCampaignPage: React.FC = () => {
       }
 
       // Validate points configuration
-      if (!data.pointsPerDollar || data.pointsPerDollar <= 0) {
-        throw new Error('Points per dollar must be greater than 0')
-      }
-
-      if (!data.pointValue || data.pointValue <= 0) {
-        throw new Error('Point value must be greater than 0')
+      if (!data.amountPerPoint || data.amountPerPoint <= 0) {
+        throw new Error('Amount per point must be greater than 0')
       }
 
       if (!data.rewards) {
@@ -332,15 +325,15 @@ const CreateCampaignPage: React.FC = () => {
 
             <Grid item xs={12} md={6}>
               <Controller
-                name="individualGoalCurrency"
+                name="campaignCurrency"
                 control={control}
                 render={({ field }) => (
                   <FormControl fullWidth>
-                    <InputLabel>Currency</InputLabel>
-                    <Select {...field} label="Currency">
+                    <InputLabel>Campaign Currency</InputLabel>
+                    <Select {...field} label="Campaign Currency">
                       {SUPPORTED_CURRENCIES.map((currency) => (
                         <MenuItem key={currency.code} value={currency.code}>
-                                                     {currency.code} - {currency.name}
+                          {currency.code} - {currency.name}
                         </MenuItem>
                       ))}
                     </Select>
@@ -375,22 +368,9 @@ const CreateCampaignPage: React.FC = () => {
             </Grid>
 
             <Grid item xs={12} md={6}>
-              <Controller
-                name="overallGoalCurrency"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.overallGoalCurrency}>
-                    <InputLabel>Overall Goal Currency</InputLabel>
-                    <Select {...field} label="Overall Goal Currency">
-                      {SUPPORTED_CURRENCIES.map((currency) => (
-                        <MenuItem key={currency.code} value={currency.code}>
-                          {currency.code} - {currency.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-              />
+              <Typography variant="body2" color="text.secondary">
+                <strong>Note:</strong> Overall goal uses the same campaign currency: {watch('campaignCurrency') || 'MXN'}
+              </Typography>
             </Grid>
 
             {/* Points Allocation Section */}
@@ -400,61 +380,30 @@ const CreateCampaignPage: React.FC = () => {
               </Typography>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={6}>
               <Controller
-                name="pointsPerDollar"
+                name="amountPerPoint"
                 control={control}
-                rules={{ required: 'Points per value is required', min: { value: 0.01, message: 'Must be greater than 0' } }}
+                rules={{ required: 'Amount per point is required', min: { value: 0.01, message: 'Must be greater than 0' } }}
                 render={({ field }) => (
                   <TextField
                     {...field}
                     fullWidth
-                    label="Points per Value"
+                    label="Amount to sell to get one point"
                     type="number"
                     inputProps={{ step: 0.01, min: 0.01 }}
-                    error={!!errors.pointsPerDollar}
-                    helperText={errors.pointsPerDollar?.message || "How many points earned per unit of value"}
+                    error={!!errors.amountPerPoint}
+                    helperText={errors.amountPerPoint?.message || `Amount in ${watch('campaignCurrency') || 'MXN'} that participant must sell to earn 1 point (will be rounded up)`}
+                    placeholder="e.g., 200"
                   />
                 )}
               />
             </Grid>
 
-            <Grid item xs={12} md={4}>
-              <Controller
-                name="pointValue"
-                control={control}
-                rules={{ required: 'Point value is required', min: { value: 0.01, message: 'Must be greater than 0' } }}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="Point Value"
-                    type="number"
-                    inputProps={{ step: 0.01, min: 0.01 }}
-                    error={!!errors.pointValue}
-                    helperText={errors.pointValue?.message || "Monetary value of each point"}
-                  />
-                )}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <Controller
-                name="pointValueCurrency"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.pointValueCurrency}>
-                    <InputLabel>Point Value Currency</InputLabel>
-                    <Select {...field} label="Point Value Currency">
-                      {SUPPORTED_CURRENCIES.map((currency) => (
-                        <MenuItem key={currency.code} value={currency.code}>
-                          {currency.code} - {currency.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-              />
+            <Grid item xs={12} md={6}>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Example:</strong> If set to 200 {watch('campaignCurrency') || 'MXN'}, participant gets 1 point for every 200 {watch('campaignCurrency') || 'MXN'} in sales (rounded up)
+              </Typography>
             </Grid>
 
             <Grid item xs={12} md={6}>
@@ -822,15 +771,20 @@ const CreateCampaignPage: React.FC = () => {
                   </Typography>
                   {watchedValues.individualGoal && (
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      Individual: {watchedValues.individualGoal.toLocaleString()} {watchedValues.individualGoalCurrency}
+                      Individual: {watchedValues.individualGoal.toLocaleString()} {watchedValues.campaignCurrency}
                     </Typography>
                   )}
                   {watchedValues.overallGoal && (
                     <Typography variant="body2" sx={{ mb: 2 }}>
-                      Overall: {watchedValues.overallGoal.toLocaleString()} {watchedValues.overallGoalCurrency}
+                      Overall: {watchedValues.overallGoal.toLocaleString()} {watchedValues.campaignCurrency}
                     </Typography>
                   )}
-                  {watchedValues.totalPointsMinted > 0 && (
+                  {watchedValues.amountPerPoint && (
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      Amount per Point: {watchedValues.amountPerPoint.toLocaleString()} {watchedValues.campaignCurrency}
+                    </Typography>
+                  )}
+                  {watchedValues.totalPointsMinted && watchedValues.totalPointsMinted > 0 && (
                     <Typography variant="body2" sx={{ mb: 2 }}>
                       Total Points Minted: {watchedValues.totalPointsMinted.toLocaleString()}
                     </Typography>

@@ -11,6 +11,7 @@ import CampaignDetailPage from './pages/CampaignDetailPage'
 import CreateCampaignPage from './pages/CreateCampaignPage'
 import CampaignExecutionPage from './pages/CampaignExecutionPage'
 import TransactionTablePage from './pages/TransactionTablePage'
+import CampaignEditPage from './pages/CampaignEditPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminPage from './pages/AdminPage'
 import ParticipantDashboardPage from './pages/ParticipantDashboardPage'
@@ -48,6 +49,8 @@ function App() {
         <Route path="/campaigns" element={<CampaignsPage />} />
         <Route path="/campaigns/create" element={<CreateCampaignPage />} />
         <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
+        <Route path="/campaigns/:id/edit" element={<CampaignEditPage />} />
+        <Route path="/campaigns/:id/participants" element={<AdminPage />} />
         <Route path="/campaigns/:id/execute" element={<CampaignExecutionPage />} />
         <Route path="/campaigns/:id/transactions" element={<TransactionTablePage />} />
         <Route path="/profile" element={<ProfilePage />} />

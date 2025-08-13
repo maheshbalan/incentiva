@@ -21,6 +21,7 @@ import {
 import { Add, Visibility, Edit, PlayArrow, People, Receipt } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import { CampaignStatus } from '@incentiva/shared'
+import { useAuth } from '../hooks/useAuth'
 
 interface Campaign {
   id: string
@@ -36,21 +37,32 @@ interface Campaign {
 
 const CampaignsPage: React.FC = () => {
   const navigate = useNavigate()
+  const { user, loading: authLoading } = useAuth()
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchCampaigns()
-  }, [])
+    if (!authLoading && user) {
+      fetchCampaigns()
+    }
+  }, [authLoading, user])
 
   const fetchCampaigns = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/campaigns')
+      // Use authenticated fetch with JWT token
+      const response = await fetch('/api/campaigns', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
       if (!response.ok) {
         throw new Error('Failed to fetch campaigns')
       }
+      
       const data = await response.json()
       setCampaigns(data.data || [])
     } catch (err) {
@@ -87,6 +99,24 @@ const CampaignsPage: React.FC = () => {
       style: 'currency',
       currency: 'MXN'
     }).format(amount)
+  }
+
+  // Show loading while auth is initializing
+  if (authLoading) {
+    return (
+      <Box>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Campaigns
+        </Typography>
+        <Typography>Initializing...</Typography>
+      </Box>
+    )
+  }
+
+  // Redirect to login if not authenticated
+  if (!user) {
+    navigate('/login')
+    return null
   }
 
   if (loading) {
@@ -252,4 +282,4 @@ const CampaignsPage: React.FC = () => {
   )
 }
 
-export default CampaignsPage 
+export default CampaignsPage

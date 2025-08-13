@@ -168,32 +168,32 @@ export class RulesProcessingService {
     for (const rule of this.ruleSet.rules.eligibility) {
       if (!rule.enabled) continue;
 
-      const startTime = Date.now();
+    const startTime = Date.now();
       try {
         const passed = await this.evaluateRuleCondition(rule.condition, transaction);
-        const executionTime = Date.now() - startTime;
+      const executionTime = Date.now() - startTime;
 
         results.push({
-          transactionId: transaction.id,
-          ruleId: rule.id,
+        transactionId: transaction.id,
+        ruleId: rule.id,
           ruleType: 'eligibility',
-          passed,
+        passed,
           pointsAllocated: 0,
           executionTime,
           ruleDetails: rule
         });
 
-      } catch (error) {
-        const executionTime = Date.now() - startTime;
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        
+    } catch (error) {
+      const executionTime = Date.now() - startTime;
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      
         results.push({
-          transactionId: transaction.id,
-          ruleId: rule.id,
+        transactionId: transaction.id,
+        ruleId: rule.id,
           ruleType: 'eligibility',
-          passed: false,
-          pointsAllocated: 0,
-          errorMessage: errorMsg,
+        passed: false,
+        pointsAllocated: 0,
+        errorMessage: errorMsg,
           executionTime,
           ruleDetails: rule
         });
@@ -212,38 +212,38 @@ export class RulesProcessingService {
     for (const rule of this.ruleSet.rules.accrual) {
       if (!rule.enabled) continue;
 
-      const startTime = Date.now();
+    const startTime = Date.now();
       try {
         const passed = await this.evaluateRuleCondition(rule.condition, transaction);
         let pointsAllocated = 0;
-
+    
         if (passed && rule.calculation) {
           pointsAllocated = await this.calculatePoints(rule.calculation, transaction);
         }
 
-        const executionTime = Date.now() - startTime;
+      const executionTime = Date.now() - startTime;
 
         results.push({
-          transactionId: transaction.id,
-          ruleId: rule.id,
+        transactionId: transaction.id,
+        ruleId: rule.id,
           ruleType: 'accrual',
-          passed,
+        passed,
           pointsAllocated,
           executionTime,
           ruleDetails: rule
         });
 
-      } catch (error) {
-        const executionTime = Date.now() - startTime;
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        
+    } catch (error) {
+      const executionTime = Date.now() - startTime;
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      
         results.push({
-          transactionId: transaction.id,
-          ruleId: rule.id,
+        transactionId: transaction.id,
+        ruleId: rule.id,
           ruleType: 'accrual',
-          passed: false,
-          pointsAllocated: 0,
-          errorMessage: errorMsg,
+        passed: false,
+        pointsAllocated: 0,
+        errorMessage: errorMsg,
           executionTime,
           ruleDetails: rule
         });
@@ -262,38 +262,38 @@ export class RulesProcessingService {
     for (const rule of this.ruleSet.rules.bonus) {
       if (!rule.enabled) continue;
 
-      const startTime = Date.now();
+    const startTime = Date.now();
       try {
         const passed = await this.evaluateRuleCondition(rule.condition, transaction);
         let pointsAllocated = 0;
-
+    
         if (passed && rule.calculation) {
           pointsAllocated = await this.calculatePoints(rule.calculation, transaction);
         }
 
-        const executionTime = Date.now() - startTime;
+      const executionTime = Date.now() - startTime;
 
         results.push({
-          transactionId: transaction.id,
-          ruleId: rule.id,
+        transactionId: transaction.id,
+        ruleId: rule.id,
           ruleType: 'bonus',
-          passed,
-          pointsAllocated,
+        passed,
+        pointsAllocated,
           executionTime,
           ruleDetails: rule
         });
 
-      } catch (error) {
-        const executionTime = Date.now() - startTime;
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        
+    } catch (error) {
+      const executionTime = Date.now() - startTime;
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      
         results.push({
-          transactionId: transaction.id,
-          ruleId: rule.id,
+        transactionId: transaction.id,
+        ruleId: rule.id,
           ruleType: 'bonus',
-          passed: false,
-          pointsAllocated: 0,
-          errorMessage: errorMsg,
+        passed: false,
+        pointsAllocated: 0,
+        errorMessage: errorMsg,
           executionTime,
           ruleDetails: rule
         });

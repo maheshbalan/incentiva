@@ -347,7 +347,10 @@ WHERE t.transaction_date > (SELECT MAX(transaction_date) FROM campaign_transacti
       // Schedule one-time load
       await fetch('/api/campaigns/schedule-load', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
         body: JSON.stringify({
           campaignId: id,
           type: 'one-time',
@@ -358,7 +361,10 @@ WHERE t.transaction_date > (SELECT MAX(transaction_date) FROM campaign_transacti
       // Schedule incremental load
       await fetch('/api/campaigns/schedule-load', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
         body: JSON.stringify({
           campaignId: id,
           type: 'incremental',

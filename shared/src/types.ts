@@ -613,15 +613,12 @@ export interface CampaignFormData {
   startDate: string
   endDate: string
   individualGoal?: number
-  individualGoalCurrency: string
+  campaignCurrency: string
   overallGoal?: number
-  overallGoalCurrency: string
   eligibilityCriteria?: string
   tlpApiKey?: string
   tlpEndpointUrl?: string
-  pointsPerDollar?: number
-  pointValue?: number
-  pointValueCurrency?: string
+  amountPerPoint?: number
   individualGoalBonus?: number
   overallGoalBonus?: number
   totalPointsMinted?: number

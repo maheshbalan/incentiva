@@ -27,9 +27,6 @@ import {
   MenuItem,
   Alert,
   List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
   Switch,
   Divider,
   Autocomplete,
@@ -50,7 +47,7 @@ import {
   PlayArrow
 } from '@mui/icons-material'
 import { useAuth } from '../hooks/useAuth'
-import { AIProvider, SUPPORTED_CURRENCIES } from '@incentiva/shared'
+import { AIProvider } from '@incentiva/shared'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -129,33 +126,9 @@ const AdminPage: React.FC = () => {
     isActive: false
   })
 
-  // Mock data - in real app this would come from API
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: '1',
-      email: 'incentiva-admin@incentiva.me',
-      firstName: 'Incentiva',
-      lastName: 'Admin',
-      role: 'ADMIN',
-      createdAt: '2024-01-01T00:00:00Z'
-    },
-    {
-      id: '2',
-      email: 'john.doe@example.com',
-      firstName: 'John',
-      lastName: 'Doe',
-      role: 'PARTICIPANT',
-      createdAt: '2024-01-15T00:00:00Z'
-    },
-    {
-      id: '3',
-      email: 'jane.smith@example.com',
-      firstName: 'Jane',
-      lastName: 'Smith',
-      role: 'PARTICIPANT',
-      createdAt: '2024-01-20T00:00:00Z'
-    }
-  ])
+  const [users, setUsers] = useState<User[]>([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
+  const [userError, setUserError] = useState<string | null>(null)
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loadingCampaigns, setLoadingCampaigns] = useState(false)
@@ -191,9 +164,40 @@ const AdminPage: React.FC = () => {
     }
   }
 
-  // Load campaigns on component mount
+  // Fetch users from API
+  const fetchUsers = async () => {
+    setLoadingUsers(true)
+    setUserError(null)
+    
+    try {
+      const response = await fetch('/api/auth/users', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const result = await response.json()
+      if (result.success && result.data) {
+        setUsers(result.data)
+      } else {
+        throw new Error(result.error || 'Failed to fetch users')
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error)
+      setUserError(error instanceof Error ? error.message : 'Failed to fetch users')
+    } finally {
+      setLoadingUsers(false)
+    }
+  }
+
+  // Load data on component mount
   useEffect(() => {
     fetchCampaigns()
+    fetchUsers()
   }, [])
 
   // Campaign execution
