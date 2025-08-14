@@ -37,6 +37,7 @@ import {
 import { ExpandMore, PlayArrow, CheckCircle, Error, Schedule, Code, DataObject } from '@mui/icons-material'
 import { useParams, useNavigate } from 'react-router-dom'
 import { CampaignStatus, RuleType } from '@incentiva/shared'
+import { authService } from '../services/authService'
 
 interface Campaign {
   id: string
@@ -114,19 +115,21 @@ const CampaignExecutionPage: React.FC = () => {
   }, [id])
 
   const fetchCampaign = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch(`/api/campaigns/${id}`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch campaign')
+          try {
+        setLoading(true)
+        const response = await authService.api.get(`/campaigns/${id}`)
+        setCampaign(response.data.data)
+      } catch (err: any) {
+        console.error('Error fetching campaign:', err)
+        if (err.response?.status === 401) {
+          // Token expired or invalid, redirect to login
+          window.location.href = '/login'
+          return
+        }
+        setError(err.message || 'Failed to fetch campaign')
+      } finally {
+        setLoading(false)
       }
-      const data = await response.json()
-      setCampaign(data.data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch campaign')
-    } finally {
-      setLoading(false)
-    }
   }
 
   const executeCampaign = async () => {
@@ -329,48 +332,35 @@ WHERE t.transaction_date > (SELECT MAX(transaction_date) FROM campaign_transacti
 
   const updateCampaignStatus = async (status: CampaignStatus) => {
     try {
-      const response = await fetch(`/api/campaigns/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      })
-      if (!response.ok) {
-        throw new Error('Failed to update campaign status')
+      const response = await authService.api.patch(`/campaigns/${id}/status`, { status })
+      // Refresh campaign data
+      fetchCampaign()
+    } catch (err: any) {
+      console.error('Error updating campaign status:', err)
+      if (err.response?.status === 401) {
+        // Token expired or invalid, redirect to login
+        window.location.href = '/login'
+        return
       }
-    } catch (err) {
-      console.error('Failed to update campaign status:', err)
+      setError(err.message || 'Failed to update campaign status')
     }
   }
 
   const scheduleDataLoads = async () => {
     try {
       // Schedule one-time load
-      await fetch('/api/campaigns/schedule-load', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          campaignId: id,
-          type: 'one-time',
-          scheduledDate: scheduleConfig.oneTimeLoad
-        })
+      await authService.api.post('/campaigns/schedule-load', {
+        campaignId: id,
+        type: 'one-time',
+        scheduledDate: scheduleConfig.oneTimeLoad
       })
 
       // Schedule incremental load
-      await fetch('/api/campaigns/schedule-load', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          campaignId: id,
-          type: 'incremental',
-          schedule: scheduleConfig.incrementalLoad,
-          time: scheduleConfig.incrementalTime
-        })
+      await authService.api.post('/campaigns/schedule-load', {
+        campaignId: id,
+        type: 'incremental',
+        schedule: scheduleConfig.incrementalLoad,
+        time: scheduleConfig.incrementalTime
       })
 
       setShowScheduleDialog(false)

@@ -51,6 +51,9 @@ export interface RegisterData {
 }
 
 export const authService = {
+  // Export the api instance for use in other components
+  api,
+  
   async login(email: string, password: string): Promise<LoginResponse> {
     const response = await api.post('/auth/login', { email, password })
     return response.data.data

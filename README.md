@@ -98,6 +98,27 @@ Incentiva is a **complete loyalty campaign management and execution system** tha
 - Total Points Minted for Campaign
 - Rewards & Redemption Options
 
+## 🔐 Authentication & Security (Latest Updates)
+
+### **JWT Token Management**
+- **Centralized Authentication**: All API calls use authenticated `axios` instance
+- **Automatic Token Handling**: JWT tokens automatically included in all requests
+- **Token Expiration**: Automatic redirect to login on 401 errors
+- **Secure API Access**: All campaign endpoints properly protected
+
+### **Frontend Authentication Service**
+- **Unified API Client**: Single `authService.api` instance for all authenticated calls
+- **Request Interceptors**: Automatic token injection and error handling
+- **Response Interceptors**: Automatic logout on authentication failures
+- **Consistent Error Handling**: Standardized error messages and user feedback
+
+### **Recent Fixes Applied**
+- **Campaign Edit Authentication**: Fixed 401 errors when editing campaigns
+- **Campaigns List**: Resolved authentication issues in campaigns listing
+- **Campaign Execution**: Fixed API authentication in execution workflow
+- **Form Field Population**: All campaign fields now properly display with authentication
+- **Database Schema**: Added missing fields for complete campaign data display
+
 ### **Step 3: Eligibility & Rules**
 - Natural language rule definition
 - AI-powered rule analysis and validation

@@ -22,6 +22,7 @@ import {
 } from '@mui/material'
 import { ArrowBack, Save, Cancel } from '@mui/icons-material'
 import { CampaignFormData, CampaignStatus, SUPPORTED_CURRENCIES } from '@incentiva/shared'
+import { authService } from '../services/authService'
 
 const CampaignEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -55,25 +56,22 @@ const CampaignEditPage: React.FC = () => {
         return
       }
 
-      const response = await fetch(`/api/campaigns/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch campaign')
-      }
-
-      const data = await response.json()
-      if (data.success) {
-        setCampaign(data.campaign)
+      // Use the authenticated axios instance from authService
+      const response = await authService.api.get(`/campaigns/${id}`)
+      
+      if (response.data.success) {
+        setCampaign(response.data.campaign)
       } else {
-        throw new Error(data.error || 'Failed to fetch campaign')
+        throw new Error(response.data.error || 'Failed to fetch campaign')
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+    } catch (err: any) {
+      console.error('Error fetching campaign:', err)
+      if (err.response?.status === 401) {
+        // Token expired or invalid, redirect to login
+        navigate('/login')
+        return
+      }
+      setError(err.message || 'An error occurred while fetching the campaign')
     } finally {
       setLoading(false)
     }
@@ -90,27 +88,22 @@ const CampaignEditPage: React.FC = () => {
         return
       }
 
-      const response = await fetch(`/api/campaigns/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(campaign)
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to update campaign')
-      }
-
-      const data = await response.json()
-      if (data.success) {
+      // Use the authenticated axios instance from authService
+      const response = await authService.api.put(`/campaigns/${id}`, campaign)
+      
+      if (response.data.success) {
         navigate('/campaigns')
       } else {
-        throw new Error(data.error || 'Failed to update campaign')
+        throw new Error(response.data.error || 'Failed to update campaign')
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+    } catch (err: any) {
+      console.error('Error updating campaign:', err)
+      if (err.response?.status === 401) {
+        // Token expired or invalid, redirect to login
+        navigate('/login')
+        return
+      }
+      setError(err.message || 'An error occurred while updating the campaign')
     } finally {
       setSaving(false)
     }

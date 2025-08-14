@@ -40,10 +40,13 @@ model Campaign {
   
   // Campaign Goals
   individualGoal          Decimal? @db.Decimal(15, 2)
-  individualGoalCurrency  String   @default("MXN") // MXN, USD, EUR, etc.
   overallGoal             Decimal? @db.Decimal(15, 2)
-  overallGoalCurrency     String   @default("MXN")
+  campaignCurrency        String   @default("MXN") // Single currency for the campaign
+  amountPerPoint          Decimal? @db.Decimal(15, 2) // Amount to sell to get one point
   totalPointsMinted       Decimal? @db.Decimal(15, 2) // Total points minted for the campaign
+  individualGoalBonus     Decimal? @db.Decimal(15, 2) // Bonus points for individual goal achievement
+  overallGoalBonus        Decimal? @db.Decimal(15, 2) // Bonus points for overall goal achievement
+  rewards                 String? // Rewards description
   
   // TLP Configuration
   tlpApiKey               String?
@@ -52,6 +55,15 @@ model Campaign {
   
   // Campaign Rules
   eligibilityCriteria     String? // Natural language eligibility description
+  
+  // Database Connection (stored in backendConnectionConfig as JSON)
+  // These fields are computed from backendConnectionConfig for easier access
+  databaseType            String? // Type of database (postgres, mysql, etc.)
+  databaseHost            String? // Database host
+  databasePort            Int?    // Database port
+  databaseName            String? // Database name
+  databaseUsername        String? // Database username
+  databasePassword        String? // Database password (encrypted)
   
   createdById             String
   createdAt               DateTime @default(now())

@@ -22,6 +22,7 @@ import { Add, Visibility, Edit, PlayArrow, People, Receipt } from '@mui/icons-ma
 import { useNavigate } from 'react-router-dom'
 import { CampaignStatus } from '@incentiva/shared'
 import { useAuth } from '../hooks/useAuth'
+import { authService } from '../services/authService'
 
 interface Campaign {
   id: string
@@ -51,22 +52,17 @@ const CampaignsPage: React.FC = () => {
   const fetchCampaigns = async () => {
     try {
       setLoading(true)
-      // Use authenticated fetch with JWT token
-      const response = await fetch('/api/campaigns', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      })
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch campaigns')
+      // Use authenticated axios instance from authService
+      const response = await authService.api.get('/campaigns')
+      setCampaigns(response.data.data || [])
+    } catch (err: any) {
+      console.error('Error fetching campaigns:', err)
+      if (err.response?.status === 401) {
+        // Token expired or invalid, redirect to login
+        window.location.href = '/login'
+        return
       }
-      
-      const data = await response.json()
-      setCampaigns(data.data || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch campaigns')
+      setError(err.message || 'Failed to fetch campaigns')
     } finally {
       setLoading(false)
     }
@@ -152,14 +148,14 @@ const CampaignsPage: React.FC = () => {
       )}
 
       {campaigns.length === 0 ? (
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
               No Campaigns Found
-            </Typography>
+              </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               You haven't created any campaigns yet. Start by creating your first campaign.
-            </Typography>
+              </Typography>
             <Button
               variant="outlined"
               startIcon={<Add />}
@@ -167,8 +163,8 @@ const CampaignsPage: React.FC = () => {
             >
               Create Your First Campaign
             </Button>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
       ) : (
         <TableContainer component={Paper}>
           <Table>
@@ -282,4 +278,4 @@ const CampaignsPage: React.FC = () => {
   )
 }
 
-export default CampaignsPage
+export default CampaignsPage 

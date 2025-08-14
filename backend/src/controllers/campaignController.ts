@@ -17,9 +17,9 @@ router.post('/', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest
       startDate,
       endDate,
       individualGoal,
-      individualGoalCurrency,
       overallGoal,
-      overallGoalCurrency,
+      campaignCurrency,
+      amountPerPoint,
       totalPointsMinted,
       eligibilityCriteria,
       tlpApiKey,
@@ -34,23 +34,23 @@ router.post('/', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest
       });
     }
 
-    const campaign = await prisma.campaign.create({
-      data: {
-        name,
-        description,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        individualGoal: individualGoal ? parseFloat(individualGoal) : null,
-        individualGoalCurrency,
-        overallGoal: overallGoal ? parseFloat(overallGoal) : null,
-        overallGoalCurrency,
-        totalPointsMinted: totalPointsMinted ? parseFloat(totalPointsMinted) : null,
-        eligibilityCriteria,
-        tlpApiKey,
-        tlpEndpointUrl,
-        backendConnectionConfig,
-        createdById: req.user.id
-      },
+          const campaign = await prisma.campaign.create({
+        data: {
+          name,
+          description,
+          startDate: new Date(startDate),
+          endDate: new Date(endDate),
+          individualGoal: individualGoal ? parseFloat(individualGoal) : null,
+          overallGoal: overallGoal ? parseFloat(overallGoal) : null,
+          campaignCurrency: campaignCurrency || 'MXN',
+          amountPerPoint: amountPerPoint ? parseFloat(amountPerPoint) : null,
+          totalPointsMinted: totalPointsMinted ? parseFloat(totalPointsMinted) : null,
+          eligibilityCriteria,
+          tlpApiKey,
+          tlpEndpointUrl,
+          backendConnectionConfig,
+          createdById: req.user.id
+        },
       include: {
         createdBy: {
           select: {
@@ -149,6 +149,11 @@ router.get('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Respo
   try {
     const { id } = req.params;
 
+    logger.info('Campaign fetch request received', { 
+      campaignId: id,
+      requestHeaders: req.headers
+    });
+
     const campaign = await prisma.campaign.findUnique({
       where: { id },
       include: {
@@ -164,18 +169,28 @@ router.get('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Respo
     });
 
     if (!campaign) {
+      logger.warn('Campaign not found', { campaignId: id });
       return res.status(404).json({
         success: false,
         error: 'Campaign not found'
       });
     }
 
+    logger.info('Campaign fetched successfully', { 
+      campaignId: id, 
+      campaignData: JSON.stringify(campaign, null, 2)
+    });
+
     res.json({
       success: true,
       campaign: campaign
     });
   } catch (error) {
-    logger.error('Failed to fetch campaign:', error);
+    logger.error('Failed to fetch campaign with detailed error:', { 
+      campaignId: req.params.id,
+      error: error.message,
+      stack: error.stack
+    });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch campaign'
@@ -232,9 +247,51 @@ router.put('/:id', authenticateJWT, requireAdmin, async (req: AuthenticatedReque
     const { id } = req.params;
     const updateData = req.body;
 
+    logger.info('Campaign update request received', { 
+      campaignId: id, 
+      requestBody: JSON.stringify(req.body, null, 2),
+      requestHeaders: req.headers
+    });
+
+    // Filter out old fields that no longer exist in the schema
+    const {
+      individualGoalCurrency,
+      overallGoalCurrency,
+      ...cleanUpdateData
+    } = updateData;
+
+    logger.info('Cleaned update data', { 
+      campaignId: id, 
+      originalData: Object.keys(req.body),
+      cleanedData: Object.keys(cleanUpdateData),
+      individualGoalCurrency,
+      overallGoalCurrency
+    });
+
+    // Map old fields to new ones if they exist
+    if (individualGoalCurrency && !cleanUpdateData.campaignCurrency) {
+      cleanUpdateData.campaignCurrency = individualGoalCurrency;
+      logger.info('Mapped individualGoalCurrency to campaignCurrency', { 
+        campaignId: id, 
+        value: individualGoalCurrency 
+      });
+    }
+    if (overallGoalCurrency && !cleanUpdateData.campaignCurrency) {
+      cleanUpdateData.campaignCurrency = overallGoalCurrency;
+      logger.info('Mapped overallGoalCurrency to campaignCurrency', { 
+        campaignId: id, 
+        value: overallGoalCurrency 
+      });
+    }
+
+    logger.info('Final update data for Prisma', { 
+      campaignId: id, 
+      data: JSON.stringify(cleanUpdateData, null, 2)
+    });
+
     const campaign = await prisma.campaign.update({
       where: { id },
-      data: updateData,
+      data: cleanUpdateData,
       include: {
         createdBy: {
           select: {
@@ -247,17 +304,26 @@ router.put('/:id', authenticateJWT, requireAdmin, async (req: AuthenticatedReque
       }
     });
 
-    logger.info('Campaign updated', { campaignId: id });
+    logger.info('Campaign updated successfully', { 
+      campaignId: id, 
+      updatedFields: Object.keys(cleanUpdateData)
+    });
 
     res.json({
       success: true,
       data: campaign
     });
   } catch (error) {
-    logger.error('Campaign update failed:', error);
+    logger.error('Campaign update failed with detailed error:', { 
+      campaignId: req.params.id,
+      error: error.message,
+      stack: error.stack,
+      updateData: req.body
+    });
     res.status(500).json({
       success: false,
-      error: 'Failed to update campaign'
+      error: 'Failed to update campaign',
+      details: error.message
     });
   }
 });
