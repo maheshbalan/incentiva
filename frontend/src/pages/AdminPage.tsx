@@ -109,6 +109,7 @@ const AdminPage: React.FC = () => {
   const [openAIDialog, setOpenAIDialog] = useState(false)
   const [openParticipantDialog, setOpenParticipantDialog] = useState(false)
   const [selectedParticipantUsers, setSelectedParticipantUsers] = useState<User[]>([])
+  const [currentParticipants, setCurrentParticipants] = useState<User[]>([])
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [editingAI, setEditingAI] = useState<AIModelConfig | null>(null)
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
@@ -333,7 +334,18 @@ const AdminPage: React.FC = () => {
   const handleManageParticipants = (campaign: Campaign) => {
     setSelectedCampaign(campaign)
     setSelectedParticipantUsers([])
-    setOpenParticipantDialog(true)
+    // Load existing participants for this campaign
+    authService.api
+      .get(`/campaigns/${campaign.id}/participants`)
+      .then(({ data }) => {
+        const users = (data?.data || []).map((uc: any) => uc.user)
+        setCurrentParticipants(users)
+      })
+      .catch((err) => {
+        console.error('Failed to load campaign participants', err)
+        setCurrentParticipants([])
+      })
+      .finally(() => setOpenParticipantDialog(true))
   }
 
   const handleAddParticipants = async (campaignId: string) => {
@@ -341,12 +353,29 @@ const AdminPage: React.FC = () => {
       for (const u of selectedParticipantUsers) {
         await authService.api.post(`/campaigns/${campaignId}/participants`, { userId: u.id })
       }
+      // Refresh participants list and campaign counters
+      const { data } = await authService.api.get(`/campaigns/${campaignId}/participants`)
+      const users = (data?.data || []).map((uc: any) => uc.user)
+      setCurrentParticipants(users)
+      setSelectedParticipantUsers([])
       alert('Participants added successfully')
-      setOpenParticipantDialog(false)
       fetchCampaigns()
     } catch (err) {
       console.error('Failed to add participants', err)
       alert('Failed to add participants')
+    }
+  }
+
+  const handleRemoveParticipant = async (campaignId: string, userId: string) => {
+    try {
+      await authService.api.delete(`/campaigns/${campaignId}/participants/${userId}`)
+      const { data } = await authService.api.get(`/campaigns/${campaignId}/participants`)
+      const users = (data?.data || []).map((uc: any) => uc.user)
+      setCurrentParticipants(users)
+      fetchCampaigns()
+    } catch (err) {
+      console.error('Failed to remove participant', err)
+      alert('Failed to remove participant')
     }
   }
 
@@ -872,6 +901,46 @@ const AdminPage: React.FC = () => {
                 </li>
               )}
             />
+
+            {/* Current Participants */}
+            <Divider sx={{ my: 3 }} />
+            <Typography variant="subtitle1" gutterBottom>
+              Current Participants
+            </Typography>
+            {currentParticipants.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">No participants yet.</Typography>
+            ) : (
+              <TableContainer component={Paper} sx={{ mt: 1 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Name</TableCell>
+                      <TableCell>Email</TableCell>
+                      <TableCell align="right">Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {currentParticipants.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell>
+                          {p.firstName && p.lastName ? `${p.firstName} ${p.lastName}` : '-'}
+                        </TableCell>
+                        <TableCell>{p.email}</TableCell>
+                        <TableCell align="right">
+                          <Button
+                            size="small"
+                            color="error"
+                            onClick={() => selectedCampaign && handleRemoveParticipant(selectedCampaign.id, p.id)}
+                          >
+                            Remove
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
           </Box>
         </DialogContent>
         <DialogActions>

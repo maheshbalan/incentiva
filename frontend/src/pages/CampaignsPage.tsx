@@ -241,17 +241,13 @@ const CampaignsPage: React.FC = () => {
                           <Edit />
                         </IconButton>
                       </Tooltip>
-                      {campaign.status === CampaignStatus.APPROVED && (
-                        <Tooltip title="Execute Campaign">
-                          <IconButton
-                            size="small"
-                            color="success"
-                            onClick={() => navigate(`/campaigns/${campaign.id}/execute`)}
-                          >
-                            <PlayArrow />
-                          </IconButton>
-                        </Tooltip>
-                      )}
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={() => navigate(`/campaigns/${campaign.id}/execute`)}
+                      >
+                        Execute
+                      </Button>
                       <Tooltip title="Manage Participants">
                         <IconButton
                           size="small"

@@ -84,6 +84,52 @@ The original system had three separate currency fields and complex point calcula
 - Validation before campaign activation
 - **Why This Matters**: Prevents misconfigured campaigns from going live and causing issues.
 
+#### **3. Campaign Execution Engine (NEW - Today's Implementation)**
+
+**The Heart of the System: Automated Campaign Execution**
+The Campaign Execution Engine is what transforms configured campaigns into live, processing systems. This is where the business rules become executable code and where customer transactions are processed to allocate loyalty points.
+
+**What Happens When You Click "Execute Campaign"?**
+
+**Phase 1: TLP Artifact Creation (Simulated)**
+- **Point Types**: Creates the loyalty point type in Pravici TLP (e.g., "Premium Line Campaign Points")
+- **Point Minting**: Issues the total campaign points to the TLP system
+- **Accrual Offers**: Creates offers that define how points are earned (e.g., "1 point per 200 MXN spent")
+- **Redemption Offers**: Sets up what participants can redeem their points for (e.g., gift cards, merchandise)
+- **Member Creation**: Creates TLP member accounts for all campaign participants
+
+**Phase 2: AI-Powered Rule Generation (Simulated)**
+- **Transaction Schema Analysis**: AI analyzes the campaign rules and customer database schema to create a transaction processing schema
+- **JSON Rules Generation**: Converts natural language rules into executable JSON rule sets
+- **SQL Artifact Creation**: Generates ETL queries for one-time and incremental data extraction
+
+**Phase 3: Data Processing & Transaction Management (Simulated)**
+- **One-Time Data Load**: Extracts historical transaction data from customer databases
+- **Incremental Processing**: Sets up scheduled data extraction for ongoing transactions
+- **Transaction Processing**: Applies rules to each transaction to determine point allocation
+- **TLP Integration**: Makes real API calls to Pravici TLP for point accruals
+
+**Current Implementation Status:**
+✅ **UI Framework Complete**: Full execution screen with step-by-step progress tracking
+✅ **Tab Navigation**: Separate tabs for TLP Artifacts, Transaction Schema, SQL Artifacts, JSON Rules, Scheduling, and Transactions
+✅ **Simulated Data Flow**: Each step populates its corresponding tab with realistic sample data
+✅ **Step Status Tracking**: Visual indicators for Pending/Running/Completed/Failed states
+✅ **Navigation Controls**: View buttons to jump to specific tabs, Back to Steps functionality
+
+🔄 **Still to be Implemented (Next Phase):**
+- Real TLP API integration (currently simulated)
+- Actual AI rule generation (currently simulated)
+- Real database connections and data extraction (currently simulated)
+- Background job processing for transaction handling (currently simulated)
+- Real-time status updates and error handling (currently simulated)
+
+**Why This Architecture?**
+The execution engine follows a **phased approach** that allows administrators to:
+1. **Review and Approve** each step before proceeding
+2. **Debug and Troubleshoot** issues at any stage
+3. **Monitor Progress** through visual status indicators
+4. **Roll Back** failed steps without affecting completed ones
+
 #### **2. Administration & User Management**
 
 **AI Model Configuration System**
@@ -98,6 +144,208 @@ We've built a flexible AI provider system that can work with multiple AI service
 Different AI providers have different strengths:
 - **Claude**: Excellent at understanding business logic and generating structured outputs
 - **GPT**: Great at creative content and natural language
+
+#### **4. Today's Major Technical Updates (Latest Session)**
+
+**Campaign Execution Page Implementation**
+Today we implemented the complete Campaign Execution UI framework that provides administrators with a comprehensive view of campaign execution progress and artifacts.
+
+**Key Technical Changes Made:**
+
+**Frontend Updates (`frontend/src/pages/CampaignExecutionPage.tsx`):**
+- ✅ **Execution Steps Table**: 6-step execution process with status tracking
+- ✅ **Tab Navigation System**: 6 tabs for different execution artifacts
+- ✅ **View/Run Button Logic**: View jumps to tabs, Run simulates execution
+- ✅ **Simulated Data Population**: Each step populates its corresponding tab
+- ✅ **Navigation Controls**: Back to Steps button with smooth scrolling
+- ✅ **Debug Logging**: Console logging for troubleshooting View button issues
+
+**State Management Enhancements:**
+- Added `executionSteps` array with step definitions
+- Added `activeTab`, `stepStatus`, `logs` state variables
+- Added `stepsRef` for scroll-to-top functionality
+- Added simulated data states for each execution phase
+
+**UI Components Added:**
+- **TLP Artifacts Tab**: Shows created point types, offers, and members
+- **Transaction Schema Tab**: Displays AI-generated transaction field definitions
+- **SQL Artifacts Tab**: Shows ETL queries for data extraction
+- **JSON Rules Tab**: Displays executable rule sets
+- **Scheduling Tab**: Approval and scheduling controls
+- **Transactions Tab**: Sample transaction data with processing status
+
+**Current Issue Being Debugged:**
+The View button functionality is being investigated - added console logging to track `activeTab` state changes and button click events. The UI framework is complete, but the tab switching needs to be verified.
+
+**Next Steps for Full Implementation:**
+1. **Fix View Button Navigation**: Ensure tabs switch correctly when View is clicked
+2. **Real TLP Integration**: Replace simulated API calls with actual Pravici TLP API calls
+3. **AI Service Integration**: Connect to real Anthropic API for rule generation
+4. **Database Integration**: Implement real customer database connections
+5. **Background Processing**: Add job queues for transaction processing
+6. **Error Handling**: Implement comprehensive error handling and recovery
+
+**Technical Architecture & Debugging Approach:**
+
+**State Management Pattern:**
+```typescript
+// Execution state tracking
+const [activeTab, setActiveTab] = useState(0)
+const [stepStatus, setStepStatus] = useState<Record<number, 'PENDING'|'RUNNING'|'COMPLETED'|'FAILED'>>({})
+const [logs, setLogs] = useState<string[]>([])
+
+// Simulated data states
+const [tlpArtifacts, setTlpArtifacts] = useState<TLPArtifact[]>([])
+const [transactionSchema, setTransactionSchema] = useState<TransactionSchema | null>(null)
+const [sqlArtifacts, setSqlArtifacts] = useState<{ oneTimeLoad: string; incrementalLoad: string; schedule: string } | null>(null)
+const [jsonRules, setJsonRules] = useState<any | null>(null)
+```
+
+**Debug Implementation:**
+- Added console logging to View button clicks
+- Added debug display showing current `activeTab` value
+- Added step-by-step execution logging
+- Implemented error boundary for failed steps
+
+**Simulation vs. Real Implementation:**
+The current system uses **simulated data** to demonstrate the UI flow and user experience. This approach allows us to:
+- Perfect the user interface before implementing complex backend logic
+- Test the navigation and state management patterns
+- Validate the user workflow with stakeholders
+- Identify UI/UX issues early in development
+
+**When Ready for Production:**
+The simulated functions will be replaced with:
+- Real API calls to Pravici TLP
+- Actual AI service integration
+- Real database connections and queries
+- Background job processing systems
+- Comprehensive error handling and monitoring
+
+**Current Debugging Status (Latest Session):**
+
+**Issue Identified:**
+The View button in the Campaign Execution steps is not properly switching tabs. Console logging has been added to track:
+- Button click events
+- `activeTab` state changes
+- Tab rendering behavior
+
+**Debug Features Added:**
+- Console logging on View button clicks: `[CampaignExecutionPage] View clicked for step X, setting activeTab to X`
+- Debug display showing current `activeTab` value above the tabs
+- Enhanced error handling in the `simulateStep` function
+
+**What to Test Now:**
+1. **Navigate to Campaign Execution**: Go to any campaign and click "Execute Campaign"
+2. **Check Console Logs**: Open browser dev tools and look for debug messages
+3. **Test View Buttons**: Click View on different steps and check:
+   - Console logs show the click event
+   - Debug display shows `activeTab` changing
+   - Tabs actually switch to the correct content
+4. **Test Run Buttons**: Click Run on different steps to see simulated data populate
+
+**Expected Behavior:**
+- View button should switch to the corresponding tab (0-5)
+- Debug display should show the current activeTab value
+- Console should log each View button click
+- Tabs should render the appropriate content for each step
+
+**If Issues Persist:**
+The next debugging step will be to:
+- Check if the `Tabs` component is receiving the correct `value` prop
+- Verify that the `onChange` handler is working correctly
+- Ensure the tab content is properly conditional on `activeTab` value
+
+#### **5. Participant Experience & Dashboard (Future Development)**
+
+**The Participant's View: Personal Campaign Management**
+While the current system focuses on administrative campaign management, the next major development phase will be building the **Participant Experience** - the interface where individual participants can view their campaigns, track their progress, and redeem their earned points.
+
+**What Participants Will Be Able to Do:**
+
+**1. Participant Login & Authentication**
+- **Secure Login**: Participants will log in with their company credentials or campaign-specific login
+- **Profile Management**: View and update their personal information
+- **Campaign Access**: See all campaigns they're eligible for or participating in
+
+**2. Campaign Overview Dashboard**
+- **Active Campaigns**: List of all campaigns where the participant is enrolled
+- **Campaign Status**: Current status (Active, Paused, Completed)
+- **Progress Indicators**: Visual representation of progress toward individual and overall goals
+- **Quick Actions**: Easy access to campaign details and redemption options
+
+**3. Individual Campaign Details**
+- **Campaign Information**: Name, description, dates, and rules
+- **Personal Progress**: Current points earned vs. individual goal
+- **Overall Campaign Status**: How the entire campaign is performing
+- **Eligibility Status**: Whether they're currently eligible to earn points
+
+**4. Points & Transaction History**
+- **Points Summary**: Total points earned, points used, and current balance
+- **Transaction Details**: Complete list of transactions that earned points
+  - Transaction date and amount
+  - Points earned from each transaction
+  - Product line or category that qualified
+  - Any bonus points or special promotions
+- **Points Timeline**: Historical view of point accumulation over time
+
+**5. Redemption Options & Rewards**
+- **Available Rewards**: List of items/services that can be redeemed
+- **Point Requirements**: How many points each reward costs
+- **Redemption History**: Previous redemptions and their status
+- **Reward Categories**: Grouped by type (gift cards, merchandise, experiences, etc.)
+
+**6. Goal Tracking & Motivation**
+- **Individual Goal Progress**: Visual progress bars toward personal targets
+- **Milestone Celebrations**: Recognition when reaching point thresholds
+- **Leaderboard Position**: Optional competitive element (if enabled)
+- **Achievement Badges**: Gamification elements for engagement
+
+**Technical Implementation Requirements:**
+
+**Frontend Components Needed:**
+- `ParticipantDashboard.tsx` - Main participant landing page
+- `CampaignList.tsx` - List of participant's campaigns
+- `CampaignDetail.tsx` - Individual campaign view for participants
+- `PointsHistory.tsx` - Transaction and points history
+- `RedemptionCenter.tsx` - Available rewards and redemption interface
+- `ProfilePage.tsx` - Participant profile and settings
+
+**Backend APIs Required:**
+- `GET /api/participants/:id/campaigns` - List participant's campaigns
+- `GET /api/participants/:id/campaigns/:campaignId` - Campaign details with participant's progress
+- `GET /api/participants/:id/points` - Points summary and balance
+- `GET /api/participants/:id/transactions` - Transaction history
+- `GET /api/participants/:id/rewards` - Available redemption options
+- `POST /api/participants/:id/redeem` - Process redemption requests
+
+**Database Schema Extensions:**
+- **Participant Progress Tracking**: Store individual progress toward goals
+- **Transaction Details**: Link transactions to specific participants and campaigns
+- **Redemption History**: Track all redemption requests and their status
+- **Points Ledger**: Complete audit trail of points earned, used, and transferred
+
+**Integration Points:**
+- **TLP Member Management**: Sync participant data with Pravici TLP
+- **Points Balance**: Real-time points balance from TLP system
+- **Redemption Processing**: TLP API calls for reward fulfillment
+- **Notification System**: Alerts for new points, goal achievements, and reward availability
+
+**User Experience Design Principles:**
+- **Mobile-First**: Participants often access from mobile devices
+- **Clear Progress Visualization**: Easy-to-understand progress indicators
+- **Quick Actions**: Minimize clicks to access key information
+- **Personalization**: Show relevant campaigns and rewards first
+- **Gamification**: Use progress bars, achievements, and celebrations to maintain engagement
+
+**Current Status:**
+🔄 **Not Yet Developed** - This is planned for the next major development phase after the Campaign Execution Engine is fully implemented.
+
+**Development Priority:**
+1. **Complete Campaign Execution Engine** (Current focus)
+2. **Implement Real TLP Integration** (Next phase)
+3. **Build Participant Experience** (Future phase)
+4. **Add Advanced Analytics & Reporting** (Final phase)
 - **Gemini**: Strong at technical tasks and code generation
 - **Azure OpenAI**: Enterprise-grade security and compliance
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Box,
   Typography,
@@ -32,9 +32,11 @@ import {
   CircularProgress,
   Accordion,
   AccordionSummary,
-  AccordionDetails
+  AccordionDetails,
+  Tabs,
+  Tab
 } from '@mui/material'
-import { ExpandMore, PlayArrow, CheckCircle, Error, Schedule, Code, DataObject } from '@mui/icons-material'
+import { ExpandMore, PlayArrow, CheckCircle, Error as ErrorIcon, Schedule, Code, DataObject, ListAlt } from '@mui/icons-material'
 import { useParams, useNavigate } from 'react-router-dom'
 import { CampaignStatus, RuleType } from '@incentiva/shared'
 import { authService } from '../services/authService'
@@ -46,6 +48,8 @@ interface Campaign {
   status: CampaignStatus
   totalPointsMinted?: number
   eligibilityCriteria?: string
+  startDate?: string
+  endDate?: string
   rules: CampaignRule[]
 }
 
@@ -90,23 +94,98 @@ const CampaignExecutionPage: React.FC = () => {
     incrementalLoad: string
     schedule: string
   } | null>(null)
+  const [jsonRules, setJsonRules] = useState<any | null>(null)
+  const [scheduling, setScheduling] = useState<{ approved: boolean; oneTimeDate: string; incremental: string } | null>(null)
+  const [simTransactions, setSimTransactions] = useState<Array<{ id: string; amount: number; status: string; action?: string; response?: string }>>([])
   const [error, setError] = useState<string | null>(null)
   const [showScheduleDialog, setShowScheduleDialog] = useState(false)
   const [scheduleConfig, setScheduleConfig] = useState({
-    oneTimeLoad: new Date().toISOString().split('T')[0],
+    oneTimeLoad: new Date().toISOString().slice(0, 10),
     incrementalLoad: 'daily',
     incrementalTime: '02:00'
   })
+  const [activeTab, setActiveTab] = useState(0)
+  const [stepStatus, setStepStatus] = useState<Record<number, 'PENDING'|'RUNNING'|'COMPLETED'|'FAILED'>>({})
+  const [logs, setLogs] = useState<string[]>([])
+  const stepsRef = useRef<HTMLDivElement | null>(null)
 
+  // Define execution steps
   const executionSteps = [
-    'TLP Point Type & Value Creation',
-    'Point Minting & Accrual Offers',
-    'Redemption Offers Generation',
-    'Member Creation',
-    'Transaction Schema Analysis',
-    'SQL Artifacts Generation',
-    'Execution Complete'
+    'Generate TLP Artifacts',
+    'Analyze Transaction Schema', 
+    'Generate SQL Artifacts',
+    'Generate JSON Rules',
+    'Approve & Schedule',
+    'Load & Process Transactions'
   ]
+
+  const appendLog = (msg: string) => setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`])
+
+  const simulateStep = async (index: number, onDone?: () => void) => {
+    setStepStatus(prev => ({ ...prev, [index]: 'RUNNING' }))
+    appendLog(`Starting: ${executionSteps[index]}`)
+    await new Promise(r => setTimeout(r, 1000))
+    appendLog(`In progress: ${executionSteps[index]}...`)
+    await new Promise(r => setTimeout(r, 1000))
+    // Populate simulated results per step
+    try {
+      switch (index) {
+        case 0:
+          setTlpArtifacts([
+            { id: `pt_${Date.now()}`, type: 'POINT_TYPE', name: `${campaign?.name} Points`, description: 'Campaign point type', apiCall: 'POST /point-types', response: 'Created', status: 'SUCCESS', createdAt: new Date().toISOString() },
+            { id: `pi_${Date.now()}`, type: 'POINT_ISSUE', name: `${campaign?.name} Issue`, description: 'Mint initial points', apiCall: 'POST /point-issues', response: 'Created', status: 'SUCCESS', createdAt: new Date().toISOString() },
+            { id: `acc_${Date.now()}`, type: 'ACCRUAL_OFFER', name: `${campaign?.name} Accrual 1`, description: 'Accrual offer', apiCall: 'POST /accrual-offers', response: 'Created', status: 'SUCCESS', createdAt: new Date().toISOString() },
+            { id: `red_${Date.now()}`, type: 'REDEMPTION_OFFER', name: 'Gift Card 100', description: 'Redemption offer', apiCall: 'POST /redemption-offers', response: 'Created', status: 'SUCCESS', createdAt: new Date().toISOString() }
+          ])
+          break
+        case 1:
+          setTransactionSchema({
+            tableName: 'sales_transactions',
+            fields: [
+              { name: 'id', type: 'string', required: true, description: 'Unique ID' },
+              { name: 'participant_id', type: 'string', required: true, description: 'Participant' },
+              { name: 'product_line', type: 'string', required: true, description: 'Product line' },
+              { name: 'amount', type: 'decimal', required: true, description: 'Amount' },
+              { name: 'transaction_date', type: 'date', required: true, description: 'Date' },
+              { name: 'status', type: 'string', required: true, description: 'Status' }
+            ]
+          })
+          break
+        case 2:
+          setSqlArtifacts({
+            oneTimeLoad: `-- One-time load for ${campaign?.name}\nSELECT * FROM source WHERE date BETWEEN '${campaign?.startDate}' AND '${campaign?.endDate}';`,
+            incrementalLoad: `-- Incremental load for ${campaign?.name}\nSELECT * FROM source WHERE date > (SELECT MAX(date) FROM campaign_transactions WHERE campaign_id='${campaign?.id}');`,
+            schedule: 'Daily at 02:00 AM'
+          })
+          break
+        case 3:
+          setJsonRules({
+            version: '1.0',
+            eligibility: [{ id: 'elig_1', field: 'product_line', operator: 'equals', value: 'Premium' }],
+            accrual: [{ id: 'acc_1', name: 'Points per MXN', formula: 'ceil(amount / 200)' }],
+            bonus: [{ id: 'bonus_1', name: 'Individual Goal Bonus', threshold: 200000, points: 10000 }]
+          })
+          break
+        case 4:
+          setScheduling({ approved: true, oneTimeDate: new Date().toISOString().slice(0, 10), incremental: 'daily 02:00' })
+          break
+        case 5:
+          setSimTransactions([
+            { id: 'tx_1', amount: 1200, status: 'COMPLETED', action: 'Accrual', response: '200 pts' },
+            { id: 'tx_2', amount: 150, status: 'SKIPPED', action: 'Eligibility', response: 'Below threshold' },
+            { id: 'tx_3', amount: 980, status: 'COMPLETED', action: 'Accrual', response: '200 pts' }
+          ])
+          break
+      }
+    } catch (e) {
+      setStepStatus(prev => ({ ...prev, [index]: 'FAILED' }))
+      appendLog(`Failed: ${executionSteps[index]}`)
+      return
+    }
+    setStepStatus(prev => ({ ...prev, [index]: 'COMPLETED' }))
+    appendLog(`Completed: ${executionSteps[index]}`)
+    if (onDone) onDone()
+  }
 
   useEffect(() => {
     if (id) {
@@ -414,27 +493,66 @@ WHERE t.transaction_date > (SELECT MAX(transaction_date) FROM campaign_transacti
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                Campaign Execution Progress
+                Campaign Execution
               </Typography>
-              
-              <Stepper activeStep={currentStep} orientation="vertical">
-                {executionSteps.map((step, index) => (
-                  <Step key={step}>
-                    <StepLabel>
-                      {step}
-                      {index < currentStep && <CheckCircle color="success" sx={{ ml: 1 }} />}
-                    </StepLabel>
-                    <StepContent>
-                      {index === currentStep && executing && (
-                        <Box display="flex" alignItems="center" gap={2}>
-                          <CircularProgress size={20} />
-                          <Typography>Executing...</Typography>
-                        </Box>
-                      )}
-                    </StepContent>
-                  </Step>
-                ))}
-              </Stepper>
+
+              {/* Steps Table */}
+              <div ref={stepsRef}>
+                <TableContainer component={Paper} sx={{ mb: 2 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Step</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell align="right">Action</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {executionSteps.map((label, idx) => (
+                      <TableRow key={label} selected={activeTab === idx}>
+                        <TableCell>
+                          <Box display="flex" alignItems="center" gap={1}>
+                            <ListAlt fontSize="small" />
+                            {label}
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          {stepStatus[idx] === 'COMPLETED' ? (
+                            <Chip label="Completed" color="success" size="small" />
+                          ) : stepStatus[idx] === 'RUNNING' ? (
+                            <Chip label="Running" color="warning" size="small" />
+                          ) : stepStatus[idx] === 'FAILED' ? (
+                            <Chip label="Failed" color="error" size="small" />
+                          ) : (
+                            <Chip label="Pending" size="small" />
+                          )}
+                        </TableCell>
+                        <TableCell align="right">
+                          <Button size="small" variant="outlined" onClick={() => {
+                            console.log('[CampaignExecutionPage] View clicked for step', idx, 'setting activeTab to', idx)
+                            setActiveTab(idx)
+                          }} sx={{ mr: 1 }}>
+                            View
+                          </Button>
+                          <Button size="small" variant="contained" onClick={() => simulateStep(idx)}>
+                            Run
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              </div>
+
+              {/* Simple log area */}
+              {logs.length > 0 && (
+                <Paper variant="outlined" sx={{ p: 2, maxHeight: 160, overflow: 'auto' }}>
+                  {logs.map((l, i) => (
+                    <Typography key={i} variant="caption" display="block">{l}</Typography>
+                  ))}
+                </Paper>
+              )}
 
               {!executing && currentStep === 0 && (
                 <Box sx={{ mt: 3 }}>
@@ -487,56 +605,178 @@ WHERE t.transaction_date > (SELECT MAX(transaction_date) FROM campaign_transacti
         </Grid>
       </Grid>
 
-      {/* TLP Artifacts Table */}
-      {tlpArtifacts.length > 0 && (
-        <Card sx={{ mt: 3 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              TLP Artifacts Created
-            </Typography>
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Type</TableCell>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {tlpArtifacts.map((artifact) => (
-                    <TableRow key={artifact.id}>
-                      <TableCell>
-                        <Chip 
-                          label={artifact.type.replace('_', ' ')} 
-                          size="small"
-                          color={artifact.status === 'SUCCESS' ? 'success' : 'error'}
-                        />
-                      </TableCell>
-                      <TableCell>{artifact.name}</TableCell>
-                      <TableCell>{artifact.description}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={artifact.status} 
-                          size="small"
-                          color={artifact.status === 'SUCCESS' ? 'success' : 'error'}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Button size="small" variant="outlined">
-                          View Details
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
-      )}
+      {/* Tabs for sections */}
+      <Card sx={{ mt: 3 }}>
+        <CardContent>
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+            Debug: Current activeTab = {activeTab}
+          </Typography>
+          <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
+            <Tab label="TLP Artifacts" />
+            <Tab label="Transaction Schema" />
+            <Tab label="SQL Artifacts" />
+            <Tab label="JSON Rules" />
+            <Tab label="Scheduling" />
+            <Tab label="Transactions & Processing" />
+          </Tabs>
+          <Box display="flex" justifyContent="flex-end" sx={{ mt: 1 }}>
+            <Button size="small" onClick={() => stepsRef.current?.scrollIntoView({ behavior: 'smooth' })}>Back to Steps</Button>
+          </Box>
+
+          {activeTab === 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>TLP Artifacts (Simulation)</Typography>
+              {tlpArtifacts.length === 0 ? (
+                <Alert severity="info">Run "Generate TLP Artifacts" step to simulate artifact creation.</Alert>
+              ) : (
+                <TableContainer component={Paper}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Type</TableCell>
+                        <TableCell>Name</TableCell>
+                        <TableCell>Description</TableCell>
+                        <TableCell>Status</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {tlpArtifacts.map(a => (
+                        <TableRow key={a.id}>
+                          <TableCell>{a.type}</TableCell>
+                          <TableCell>{a.name}</TableCell>
+                          <TableCell>{a.description}</TableCell>
+                          <TableCell>
+                            <Chip label={a.status} color={a.status === 'SUCCESS' ? 'success' : 'warning'} size="small" />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </Box>
+          )}
+
+          {activeTab === 1 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>Transaction Schema (Simulation)</Typography>
+              {!transactionSchema ? (
+                <Alert severity="info">Run "Analyze Transaction Schema" step to simulate schema creation.</Alert>
+              ) : (
+                <TableContainer component={Paper}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Field</TableCell>
+                        <TableCell>Type</TableCell>
+                        <TableCell>Required</TableCell>
+                        <TableCell>Description</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {transactionSchema.fields.map((f) => (
+                        <TableRow key={f.name}>
+                          <TableCell>{f.name}</TableCell>
+                          <TableCell>{f.type}</TableCell>
+                          <TableCell>{f.required ? 'Yes' : 'No'}</TableCell>
+                          <TableCell>{f.description}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </Box>
+          )}
+
+          {activeTab === 2 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>SQL Artifacts (Simulation)</Typography>
+              {!sqlArtifacts ? (
+                <Alert severity="info">Run "Generate SQL Artifacts" step to simulate SQL generation.</Alert>
+              ) : (
+                <>
+                  <Typography variant="subtitle2">One-Time Load</Typography>
+                  <TextField fullWidth multiline rows={6} value={sqlArtifacts.oneTimeLoad} InputProps={{ readOnly: true }} sx={{ mb: 2 }} />
+                  <Typography variant="subtitle2">Incremental Load</Typography>
+                  <TextField fullWidth multiline rows={6} value={sqlArtifacts.incrementalLoad} InputProps={{ readOnly: true }} sx={{ mb: 2 }} />
+                  <Alert severity="success">Suggested Schedule: {sqlArtifacts.schedule}</Alert>
+                </>
+              )}
+            </Box>
+          )}
+
+          {activeTab === 3 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>JSON Rules (Simulation)</Typography>
+              {!jsonRules ? (
+                <Alert severity="info">Run "Generate JSON Rules" step to simulate rule creation.</Alert>
+              ) : (
+                <TextField fullWidth multiline rows={12} value={JSON.stringify(jsonRules, null, 2)} InputProps={{ readOnly: true }} />
+              )}
+            </Box>
+          )}
+
+          {activeTab === 4 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>Approval & Scheduling (Simulation)</Typography>
+              {!scheduling ? (
+                <>
+                  <Alert severity="info">After artifacts are generated, approve one-time run and set incremental schedule.</Alert>
+                  <Button variant="contained" sx={{ mt: 2 }} onClick={() => setScheduling({ approved: true, oneTimeDate: new Date().toISOString().slice(0,10), incremental: 'daily 02:00' })}>Approve & Schedule</Button>
+                </>
+              ) : (
+                <Alert severity="success">Approved for one-time run on {scheduling.oneTimeDate}. Incremental: {scheduling.incremental}.</Alert>
+              )}
+            </Box>
+          )}
+
+          {activeTab === 5 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>Transactions & Processing (Simulation)</Typography>
+              {simTransactions.length === 0 ? (
+                <>
+                  <Alert severity="info">Run steps to load transactions, then process unprocessed.</Alert>
+                  <Button variant="contained" sx={{ mt: 2 }} onClick={() => setSimTransactions([
+                    { id: 'tx_1', amount: 1200, status: 'PENDING' },
+                    { id: 'tx_2', amount: 150, status: 'PENDING' }
+                  ])}>Load Sample</Button>
+                </>
+              ) : (
+                <>
+                  <TableContainer component={Paper}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>ID</TableCell>
+                          <TableCell>Amount</TableCell>
+                          <TableCell>Status</TableCell>
+                          <TableCell>Action</TableCell>
+                          <TableCell>Response</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {simTransactions.map((t, idx) => (
+                          <TableRow key={t.id}>
+                            <TableCell>{t.id}</TableCell>
+                            <TableCell>{t.amount}</TableCell>
+                            <TableCell>{t.status}</TableCell>
+                            <TableCell>{t.action || '-'}</TableCell>
+                            <TableCell>{t.response || '-'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                  <Button variant="contained" sx={{ mt: 2 }} onClick={() => {
+                    setSimTransactions(prev => prev.map(t => t.status === 'PENDING' ? ({ ...t, status: 'COMPLETED', action: 'Accrual', response: '200 pts' }) : t))
+                  }}>Process Unprocessed</Button>
+                </>
+              )}
+            </Box>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Transaction Schema */}
       {transactionSchema && (
