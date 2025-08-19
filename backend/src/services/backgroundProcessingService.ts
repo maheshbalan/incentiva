@@ -520,12 +520,11 @@ export class BackgroundProcessingService {
     try {
       for (const row of rows) {
         // Apply field mappings if specified
-        let transactionData: any = row
+        let transactionData: any = row as Record<string, any>
         if (transformation?.fieldMappings) {
           transactionData = {} as Record<string, any>
-          for (const [sourceField, targetField] of Object.entries(transformation.fieldMappings)) {
-            const typedTransactionData = transactionData as Record<string, any>
-            typedTransactionData[targetField] = (row as any)[sourceField]
+          for (const [sourceField, targetField] of Object.entries(transformation.fieldMappings) as [string, string][]) {
+            transactionData[targetField] = (row as Record<string, any>)[sourceField]
           }
         }
 
