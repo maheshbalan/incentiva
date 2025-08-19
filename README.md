@@ -148,6 +148,12 @@ Incentiva is a **complete loyalty campaign management and execution system** tha
 - **Manage Participants**: Assign and manage campaign participants
 - **View Transactions**: Monitor transaction processing
 
+### **Participants Management (Updated)**
+- **Add Participants**: Select one or more users (role: PARTICIPANT) and add them to a campaign
+- **Current Participants Table**: Displays users already associated with the campaign
+- **Remove Participant**: Remove a participant from the campaign
+- **Live Refresh**: Updates participant list and campaign participant counts after add/remove
+
 ### **Campaign Execution Workflow**
 1. **TLP Artifacts Creation**: Point types, point issues, accruals, redemptions
 2. **Database Schema Analysis**: Customer database structure analysis
