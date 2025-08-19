@@ -27,6 +27,7 @@ model User {
   redemptions          CampaignRedemption[]
   createdCampaigns     Campaign[]            @relation("CampaignCreator")
   campaignParticipants CampaignParticipant[] @relation("CampaignParticipant")
+  campaignTransactions CampaignTransaction[] @relation("CampaignTransactionParticipant")
 
   @@map("users")
 }
@@ -87,6 +88,8 @@ model Campaign {
   transactions          CampaignTransaction[]
   rulesEngineJobs       RulesEngineJob[]
   rulesEngineExecutions RulesEngineExecution[]
+  dataExtractionJobs    DataExtractionJob[]
+  transactionProcessingJobs TransactionProcessingJob[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -202,6 +205,7 @@ model CampaignRedemption {
 model CampaignTransaction {
   id           String  @id @default(cuid())
   campaignId   String
+  participantId String? // User/participant ID for this transaction
   externalId   String? // Original invoice/order ID from customer system
   externalType String? // "INVOICE", "ORDER", etc.
 
@@ -212,6 +216,7 @@ model CampaignTransaction {
   // Rules engine processing
   rulesApplied     Boolean                     @default(false)
   pointsAllocated  Int                         @default(0)
+  pointsEarned     Int                         @default(0) // Points earned from this transaction
   processingStatus TransactionProcessingStatus @default(PENDING)
 
   // TLP integration
@@ -230,6 +235,7 @@ model CampaignTransaction {
 
   // Relations
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  participant User? @relation("CampaignTransactionParticipant", fields: [participantId], references: [id])
 
   @@map("campaign_transactions")
 }
@@ -409,6 +415,25 @@ enum RulesEngineExecutionStatus {
   CANCELLED
 }
 
+enum DataExtractionJobType {
+  ONE_TIME
+  INCREMENTAL
+}
+
+enum DataExtractionJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum TransactionProcessingJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
 enum RuleStatus {
   DRAFT
   ACTIVE
@@ -443,11 +468,44 @@ model CampaignExecutionLog {
   success       Boolean
   executionTime Int // Execution time in milliseconds
   createdAt     DateTime @default(now())
-
+  
   // Relationships
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-
+  
   @@map("campaign_execution_logs")
+}
+
+model DataExtractionJob {
+  id              String   @id @default(cuid())
+  campaignId      String
+  type            DataExtractionJobType
+  status          DataExtractionJobStatus
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  extractedRows   Int      @default(0)
+  errorMessage    String?
+  lastProcessedTimestamp DateTime? // Timestamp of last processed data
+  
+  // Relationships
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  @@map("data_extraction_jobs")
+}
+
+model TransactionProcessingJob {
+  id              String   @id @default(cuid())
+  campaignId      String
+  status          TransactionProcessingJobStatus
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  processedRows   Int      @default(0)
+  processedTransactions Int @default(0) // Number of transactions processed
+  errorMessage    String?
+  
+  // Relationships
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  @@map("transaction_processing_jobs")
 }
 
 model CampaignParticipant {

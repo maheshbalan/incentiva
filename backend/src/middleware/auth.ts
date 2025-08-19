@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import { prisma } from '../index';
-import { UserRole } from '@incentiva/shared';
+import { UserRole } from '@prisma/client';
 import { createError } from './errorHandler';
 
 // Define a User interface that matches our Prisma schema

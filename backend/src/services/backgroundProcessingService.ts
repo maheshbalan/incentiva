@@ -345,10 +345,10 @@ export class BackgroundProcessingService {
       
       // Get unprocessed transactions
       const transactions = await this.prisma.campaignTransaction.findMany({
-        where: {
-          campaignId,
-          processed: false
-        }
+                  where: {
+            campaignId,
+            processedAt: null
+          }
       })
 
       logger.info('Processing transactions', {
@@ -363,7 +363,7 @@ export class BackgroundProcessingService {
       // Process each transaction
       for (const transaction of transactions) {
         try {
-          const transactionData = JSON.parse(transaction.transactionData)
+          const transactionData = JSON.parse(transaction.transactionData as string)
           
           // Apply eligibility rules
           const isEligible = this.evaluateEligibilityRules(transactionData, rules.eligibilityRules)
@@ -402,10 +402,9 @@ export class BackgroundProcessingService {
                 await this.prisma.campaignTransaction.update({
                   where: { id: transaction.id },
                   data: {
-                    processed: true,
+                    processedAt: new Date(),
                     pointsEarned,
-                    tlpResponse: accrualResult.response,
-                    processedAt: new Date()
+                    tlpResponse: accrualResult.response
                   }
                 })
 
@@ -523,9 +522,10 @@ export class BackgroundProcessingService {
         // Apply field mappings if specified
         let transactionData: any = row
         if (transformation?.fieldMappings) {
-          transactionData = {} as any
+          transactionData = {} as Record<string, any>
           for (const [sourceField, targetField] of Object.entries(transformation.fieldMappings)) {
-            transactionData[targetField] = (row as any)[sourceField]
+            const typedTransactionData = transactionData as Record<string, any>
+            typedTransactionData[targetField] = (row as any)[sourceField]
           }
         }
 
@@ -546,7 +546,7 @@ export class BackgroundProcessingService {
             campaignId,
             participantId: transactionData.participantId || 'unknown',
             transactionData: JSON.stringify(transactionData),
-            processed: false,
+            processedAt: null,
             createdAt: new Date()
           }
         })

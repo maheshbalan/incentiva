@@ -338,7 +338,7 @@ router.get('/status/:campaignId', authenticateJWT, async (req: AuthenticatedRequ
     const campaign = await prisma.campaign.findUnique({
       where: { id: campaignId },
       include: {
-        tLPArtifacts: {
+        tlpArtifacts: {
           orderBy: { createdAt: 'desc' }
         },
         executionLogs: {
@@ -361,10 +361,10 @@ router.get('/status/:campaignId', authenticateJWT, async (req: AuthenticatedRequ
       status: campaign.status,
       lastExecutedAt: campaign.lastExecutedAt,
       tlpArtifacts: {
-        total: campaign.tLPArtifacts.length,
-        successful: campaign.tLPArtifacts.filter(a => a.status === 'SUCCESS').length,
-        failed: campaign.tLPArtifacts.filter(a => a.status === 'FAILED').length,
-        recent: campaign.tLPArtifacts.slice(0, 10)
+        total: campaign.tlpArtifacts.length,
+        successful: campaign.tlpArtifacts.filter(a => a.status === 'SUCCESS').length,
+        failed: campaign.tlpArtifacts.filter(a => a.status === 'FAILED').length,
+        recent: campaign.tlpArtifacts.slice(0, 10)
       },
       executionHistory: campaign.executionLogs,
       hasTransactionSchema: !!campaign.transactionSchema,
