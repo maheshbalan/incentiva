@@ -417,7 +417,7 @@ EXAMPLE STRUCTURE:
         rulesSuccess: jsonRules.success,
         queriesSuccess: dataQueries.success
       })
-
+      
       return {
         transactionSchema,
         jsonRules,
@@ -486,7 +486,7 @@ EXAMPLE STRUCTURE:
       if (!hasAmount) {
         warnings.push('Schema may be missing transaction amount/value field')
       }
-
+      
       return {
         valid: errors.length === 0,
         errors,

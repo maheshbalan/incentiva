@@ -1,12 +1,24 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../index';
 import { authenticateJWT, requireAdmin, AuthenticatedRequest } from '../middleware/auth';
-import { aiService } from '../services/aiService';
-import { tlpService } from '../services/tlpService';
+import AIService from '../services/aiService';
+import TLPService from '../services/tlpService';
 import { logger } from '../utils/logger';
 import { CampaignStatus, RuleType } from '@incentiva/shared';
 
 const router = Router();
+
+// Initialize services
+const aiService = new AIService({
+  apiKey: process.env.ANTHROPIC_API_KEY || '',
+  model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
+  endpoint: 'https://api.anthropic.com/v1/messages'
+});
+
+const tlpService = new TLPService({
+  apiKey: process.env.TLP_DEFAULT_API_KEY || '',
+  endpointUrl: process.env.TLP_DEFAULT_ENDPOINT || ''
+});
 
 // Create new campaign
 router.post('/', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
@@ -23,8 +35,7 @@ router.post('/', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest
       totalPointsMinted,
       eligibilityCriteria,
       tlpApiKey,
-      tlpEndpointUrl,
-      backendConnectionConfig
+      tlpEndpointUrl
     } = req.body;
 
     if (!req.user) {
@@ -48,7 +59,6 @@ router.post('/', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest
           eligibilityCriteria,
           tlpApiKey,
           tlpEndpointUrl,
-          backendConnectionConfig,
           createdById: req.user.id
         },
       include: {
@@ -359,7 +369,7 @@ router.post('/:id/schema', authenticateJWT, requireAdmin, async (req: Authentica
     const { schemaDefinition } = req.body;
 
     // Analyze schema using AI
-    const analysis = await aiService.analyzeSchema(JSON.stringify(schemaDefinition));
+    const analysis = await aiService.generateTransactionSchema(JSON.stringify(schemaDefinition));
 
     // Save schema analysis
     const schema = await prisma.campaignSchema.create({
@@ -435,7 +445,7 @@ router.post('/:id/rules', authenticateJWT, requireAdmin, async (req: Authenticat
     }
 
     // Generate rules using AI
-    const rules = await aiService.generateRules(requirements, {
+    const rules = await aiService.generateJSONRules(requirements, {
       tables: [],
       relationships: [],
       understandingScore: Number(latestSchema.understandingScore) || 0,
@@ -447,12 +457,11 @@ router.post('/:id/rules', authenticateJWT, requireAdmin, async (req: Authenticat
     const savedRules = await Promise.all(
       (rules.rules?.goalRules || []).map(goal => 
         prisma.campaignRule.create({
-          data: {
-            campaignId: id,
-            ruleType: RuleType.GOAL,
-            ruleDefinition: JSON.stringify(goal),
-            generatedCode: rules.generatedCode?.typescript || rules.generatedCode?.microserviceCode || ''
-          }
+                  data: {
+          campaignId: id,
+          ruleType: RuleType.GOAL,
+          ruleDefinition: JSON.stringify(goal)
+        }
         })
       )
     );
@@ -568,21 +577,25 @@ router.post('/:id/execute', authenticateJWT, requireAdmin, async (req: Authentic
     }
 
     // Create TLP point type
-    const pointType = await tlpService.createCampaignPointType(campaign.name);
+    const pointType = await tlpService.createPointType(campaign);
 
     // Create TLP offers for prizes
     const prizeRules = campaign.rules.filter(rule => rule.ruleType === RuleType.PRIZE);
     const offers = await Promise.all(
       prizeRules.map(rule => {
         const prize = rule.ruleDefinition as any;
-        return tlpService.createRedemptionOffer(
-          campaign.name,
-          pointType.id!,
-          prize.name,
-          prize.description,
-          prize.pointCost,
-          prize.imageUrl
-        );
+        // TODO: Implement redemption offer creation
+        // For now, return a placeholder
+        return {
+          id: `ro_${Date.now()}_${Math.random()}`,
+          campaignId: campaign.id,
+          artifactType: 'REDEMPTION_OFFER',
+          artifactName: prize.name,
+          apiCall: JSON.stringify({ prize }),
+          response: 'Placeholder - redemption offer creation not yet implemented',
+          status: 'PENDING',
+          createdAt: new Date()
+        };
       })
     );
 

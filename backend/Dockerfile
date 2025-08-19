@@ -61,16 +61,16 @@ COPY --from=frontend-builder /app/frontend/dist ./backend/public
 # Install workspace dependencies
 RUN npm install
 
-# Skip TypeScript build for now, use source directly
+# Build TypeScript backend
 WORKDIR /app/backend
-# RUN npm run build
+RUN npm run build
 
 # Generate Prisma client
 RUN npx prisma generate
 
-# Keep dev dependencies for ts-node
+# Remove dev dependencies for production
 WORKDIR /app
-# RUN npm prune --production && npm cache clean --force
+RUN npm prune --production && npm cache clean --force
 
 # Create necessary directories and set permissions
 RUN mkdir -p /app/backend/logs && \
@@ -89,5 +89,5 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3001/health || exit 1
 
-# Start command (use dev mode with ts-node)
-CMD ["npm", "run", "dev"]
+# Start command (use built JavaScript)
+CMD ["npm", "start"]
