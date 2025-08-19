@@ -54,7 +54,7 @@ services:
       retries: 3
     networks:
       - incentiva-network
-    command: sh -c "npx prisma migrate deploy && npm run dev"
+    command: sh -c "npx prisma migrate deploy && npm start"
 
   # Nginx (optional - for production)
   nginx:
