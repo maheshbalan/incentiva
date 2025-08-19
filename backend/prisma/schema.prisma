@@ -23,91 +23,103 @@ model User {
   updatedAt     DateTime @updatedAt
 
   // Relations
-  campaigns     UserCampaign[]
-  redemptions   CampaignRedemption[]
-  createdCampaigns Campaign[] @relation("CampaignCreator")
+  campaigns            UserCampaign[]
+  redemptions          CampaignRedemption[]
+  createdCampaigns     Campaign[]            @relation("CampaignCreator")
+  campaignParticipants CampaignParticipant[] @relation("CampaignParticipant")
 
   @@map("users")
 }
 
 model Campaign {
-  id                        String   @id @default(cuid())
-  name                      String
-  description               String?
-  startDate                 DateTime
-  endDate                   DateTime
-  status                    CampaignStatus @default(DRAFT)
-  individualGoal            Decimal? @db.Decimal(15, 2)
-  overallGoal               Decimal? @db.Decimal(15, 2)
-  campaignCurrency          String   @default("MXN") // Single currency for the campaign
-  amountPerPoint            Decimal? @db.Decimal(15, 2) // Amount to sell to get one point
-  totalPointsMinted         Decimal? @db.Decimal(15, 2) // Total points minted for the campaign
-  individualGoalBonus       Decimal? @db.Decimal(15, 2) // Bonus points for individual goal achievement
-  overallGoalBonus          Decimal? @db.Decimal(15, 2) // Bonus points for overall goal achievement
-  rewards                   String? // Rewards description
+  id                  String         @id @default(cuid())
+  name                String
+  description         String?
+  startDate           DateTime
+  endDate             DateTime
+  status              CampaignStatus @default(DRAFT)
+  individualGoal      Decimal?       @db.Decimal(15, 2)
+  overallGoal         Decimal?       @db.Decimal(15, 2)
+  campaignCurrency    String         @default("MXN") // Single currency for the campaign
+  amountPerPoint      Decimal?       @db.Decimal(15, 2) // Amount to sell to get one point
+  totalPointsMinted   Decimal?       @db.Decimal(15, 2) // Total points minted for the campaign
+  individualGoalBonus Decimal?       @db.Decimal(15, 2) // Bonus points for individual goal achievement
+  overallGoalBonus    Decimal?       @db.Decimal(15, 2) // Bonus points for overall goal achievement
+  rewards             String? // Rewards description
 
   // TLP Configuration
-  tlpApiKey                 String?
-  tlpEndpointUrl            String?
+  tlpApiKey      String?
+  tlpEndpointUrl String?
 
   // Campaign Rules
-  eligibilityCriteria       String? // Natural language eligibility description
-  rules                     CampaignRule[]
-  
+  eligibilityCriteria String? // Natural language eligibility description
+  rules               CampaignRule[]
+
   // Generated Artifacts
-  transactionSchema         String? // JSON schema for transactions
-  jsonRules                 String? // Executable JSON rules
-  dataExtractionQueries     String? // SQL queries for data extraction
+  transactionSchema     String? // JSON schema for transactions
+  jsonRules             String? // Executable JSON rules
+  dataExtractionQueries String? // SQL queries for data extraction
 
   // Database Connection (stored in backendConnectionConfig as JSON)
-  databaseType              String? // Type of database (postgres, mysql, etc.)
-  databaseHost              String? // Database host
-  databasePort              Int?    // Database port
-  databaseName              String? // Database name
-  databaseUsername          String? // Database username
-  databasePassword          String? // Database password (encrypted)
+  databaseType     String? // Type of database (postgres, mysql, etc.)
+  databaseHost     String? // Database host
+  databasePort     Int? // Database port
+  databaseName     String? // Database name
+  databaseUsername String? // Database username
+  databasePassword String? // Database password (encrypted)
 
   // Execution Tracking
-  lastExecutedAt            DateTime?
-  executionLogs             CampaignExecutionLog[]
-  tlpArtifacts              TLPArtifact[]
+  lastExecutedAt DateTime?
+  executionLogs  CampaignExecutionLog[]
+  tlpArtifacts   TLPArtifact[]
 
   // Relationships
-  createdBy                 User     @relation("CampaignCreator", fields: [createdById], references: [id])
-  createdById               String
-  participants              CampaignParticipant[]
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
+  createdBy    User                  @relation("CampaignCreator", fields: [createdById], references: [id])
+  createdById  String
+  participants CampaignParticipant[]
+
+  // Additional relations
+  goals                 CampaignGoal[]
+  executions            CampaignExecution[]
+  schemas               CampaignSchema[]
+  userCampaigns         UserCampaign[]
+  redemptions           CampaignRedemption[]
+  transactions          CampaignTransaction[]
+  rulesEngineJobs       RulesEngineJob[]
+  rulesEngineExecutions RulesEngineExecution[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("campaigns")
 }
 
 model CampaignGoal {
-  id              String   @id @default(cuid())
-  campaignId      String
-  goalType        GoalType
-  targetValue     Decimal  @db.Decimal(15, 2)
-  currency        String   @default("MXN")
-  description     String?
-  isAchieved      Boolean  @default(false)
-  achievedAt      DateTime?
-  createdAt       DateTime @default(now())
+  id          String    @id @default(cuid())
+  campaignId  String
+  goalType    GoalType
+  targetValue Decimal   @db.Decimal(15, 2)
+  currency    String    @default("MXN")
+  description String?
+  isAchieved  Boolean   @default(false)
+  achievedAt  DateTime?
+  createdAt   DateTime  @default(now())
 
   // Relations
-  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@map("campaign_goals")
 }
 
 model CampaignRule {
-  id                String   @id @default(cuid())
-  campaignId        String
-  ruleType          RuleType
-  ruleDefinition    Json
-  status            RuleStatus @default(DRAFT)
-  campaign          Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id             String     @id @default(cuid())
+  campaignId     String
+  ruleType       RuleType
+  ruleDefinition Json
+  status         RuleStatus @default(DRAFT)
+  campaign       Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
   @@map("campaign_rules")
 }
@@ -120,202 +132,202 @@ model CampaignExecution {
   pointsAllocated Int      @default(0)
   goalAchieved    Boolean  @default(false)
   executionDate   DateTime @default(now())
-  
+
   // Execution details
-  transactionAmount Decimal? @db.Decimal(15, 2)
-  transactionCurrency String? @default("MXN")
-  transactionType   String? // "ACCRUAL" or "REDEMPTION"
+  transactionAmount   Decimal? @db.Decimal(15, 2)
+  transactionCurrency String?  @default("MXN")
+  transactionType     String? // "ACCRUAL" or "REDEMPTION"
 
   // Relations
-  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@map("campaign_executions")
 }
 
 model CampaignSchema {
-  id                String   @id @default(cuid())
-  campaignId        String
-  schemaDefinition  Json
+  id                 String   @id @default(cuid())
+  campaignId         String
+  schemaDefinition   Json
   understandingScore Decimal? @db.Decimal(3, 2)
-  feedbackText      String?
-  uploadedAt        DateTime @default(now())
+  feedbackText       String?
+  uploadedAt         DateTime @default(now())
 
   // Relations
-  campaign          Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@map("campaign_schemas")
 }
 
 model UserCampaign {
-  id              String   @id @default(cuid())
-  userId          String
-  campaignId      String
-  participantId   String? // TLP member ID
-  currentPoints   Int      @default(0)
-  goalProgress    Decimal  @default(0) @db.Decimal(5, 2) // Percentage
-  isEnrolled      Boolean  @default(true)
-  enrolledAt      DateTime @default(now())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String   @id @default(cuid())
+  userId        String
+  campaignId    String
+  participantId String? // TLP member ID
+  currentPoints Int      @default(0)
+  goalProgress  Decimal  @default(0) @db.Decimal(5, 2) // Percentage
+  isEnrolled    Boolean  @default(true)
+  enrolledAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Relations
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@unique([userId, campaignId])
   @@map("user_campaigns")
 }
 
 model CampaignRedemption {
-  id              String   @id @default(cuid())
-  campaignId      String
-  userId          String
-  offerId         String // TLP offer ID
-  offerName       String?
+  id               String           @id @default(cuid())
+  campaignId       String
+  userId           String
+  offerId          String // TLP offer ID
+  offerName        String?
   offerDescription String?
-  pointsRedeemed  Int
-  redemptionDate  DateTime @default(now())
-  status          RedemptionStatus @default(PENDING)
-  
+  pointsRedeemed   Int
+  redemptionDate   DateTime         @default(now())
+  status           RedemptionStatus @default(PENDING)
+
   // Redemption details
   tlpTransactionId String? // TLP transaction reference
 
   // Relations
-  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("campaign_redemptions")
 }
 
 model CampaignTransaction {
-  id              String   @id @default(cuid())
-  campaignId      String
-  externalId      String? // Original invoice/order ID from customer system
-  externalType    String? // "INVOICE", "ORDER", etc.
-  
+  id           String  @id @default(cuid())
+  campaignId   String
+  externalId   String? // Original invoice/order ID from customer system
+  externalType String? // "INVOICE", "ORDER", etc.
+
   // Transaction data (JSON structure from customer system)
-  transactionData Json     // Raw transaction data from customer database
-  processedData   Json?    // Processed/transformed data after rules application
-  
+  transactionData Json // Raw transaction data from customer database
+  processedData   Json? // Processed/transformed data after rules application
+
   // Rules engine processing
-  rulesApplied    Boolean  @default(false)
-  pointsAllocated Int      @default(0)
+  rulesApplied     Boolean                     @default(false)
+  pointsAllocated  Int                         @default(0)
   processingStatus TransactionProcessingStatus @default(PENDING)
-  
+
   // TLP integration
   tlpAccrualPayload Json? // TLP API request payload
-  tlpTransactionId String? // TLP transaction reference
-  tlpResponse      Json?   // TLP API response
-  
+  tlpTransactionId  String? // TLP transaction reference
+  tlpResponse       Json? // TLP API response
+
   // Processing metadata
-  processedAt     DateTime?
-  errorMessage    String?
-  retryCount      Int      @default(0)
-  maxRetries      Int      @default(3)
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  processedAt  DateTime?
+  errorMessage String?
+  retryCount   Int       @default(0)
+  maxRetries   Int       @default(3)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@map("campaign_transactions")
 }
 
 model RulesEngineJob {
-  id              String   @id @default(cuid())
-  campaignId      String
-  jobType         RulesEngineJobType
-  status          RulesEngineJobStatus @default(PENDING)
-  
+  id         String               @id @default(cuid())
+  campaignId String
+  jobType    RulesEngineJobType
+  status     RulesEngineJobStatus @default(PENDING)
+
   // Job configuration
-  schedule        String?  // Cron expression for recurring jobs
-  isRecurring     Boolean  @default(false)
-  lastRunAt       DateTime?
-  nextRunAt       DateTime?
-  
+  schedule    String? // Cron expression for recurring jobs
+  isRecurring Boolean   @default(false)
+  lastRunAt   DateTime?
+  nextRunAt   DateTime?
+
   // Data source configuration
-  dataSourceConfig Json    // Database connection and query configuration
-  
+  dataSourceConfig Json // Database connection and query configuration
+
   // Processing configuration
-  batchSize       Int      @default(1000)
-  maxConcurrency  Int      @default(5)
-  
+  batchSize      Int @default(1000)
+  maxConcurrency Int @default(5)
+
   // Execution tracking
-  totalRecords    Int      @default(0)
-  processedRecords Int     @default(0)
-  failedRecords   Int      @default(0)
-  
+  totalRecords     Int @default(0)
+  processedRecords Int @default(0)
+  failedRecords    Int @default(0)
+
   // Job metadata
-  startedAt       DateTime?
-  completedAt     DateTime?
-  errorMessage    String?
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  startedAt    DateTime?
+  completedAt  DateTime?
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  executions     RulesEngineExecution[]
+  campaign   Campaign               @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  executions RulesEngineExecution[]
 
   @@map("rules_engine_jobs")
 }
 
 model RulesEngineExecution {
-  id              String   @id @default(cuid())
-  jobId           String
-  campaignId      String
-  
+  id         String @id @default(cuid())
+  jobId      String
+  campaignId String
+
   // Execution details
-  executionType   RulesEngineExecutionType
-  status          RulesEngineExecutionStatus @default(RUNNING)
-  
+  executionType RulesEngineExecutionType
+  status        RulesEngineExecutionStatus @default(RUNNING)
+
   // Data processing
-  recordsProcessed Int     @default(0)
-  recordsSucceeded Int     @default(0)
-  recordsFailed    Int     @default(0)
-  
+  recordsProcessed Int @default(0)
+  recordsSucceeded Int @default(0)
+  recordsFailed    Int @default(0)
+
   // Performance metrics
-  startTime       DateTime @default(now())
-  endTime         DateTime?
-  durationMs      Int?
-  
+  startTime  DateTime  @default(now())
+  endTime    DateTime?
+  durationMs Int?
+
   // Error handling
-  errorMessage    String?
-  stackTrace      String?
-  
+  errorMessage String?
+  stackTrace   String?
+
   // Logs and metadata
-  executionLog    Json?
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  executionLog Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  job            RulesEngineJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  campaign       Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  job      RulesEngineJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@map("rules_engine_executions")
 }
 
 model SystemConfiguration {
-  id              String   @id @default(cuid())
-  key             String   @unique
-  value           String
-  description     String?
-  updatedAt       DateTime @updatedAt
-  updatedBy       String?
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?
 
   @@map("system_configurations")
 }
 
 model AIConfiguration {
-  id              String   @id @default(cuid())
-  provider        AIProvider
-  modelName       String
-  apiKey          String
-  isActive        Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id        String     @id @default(cuid())
+  provider  AIProvider
+  modelName String
+  apiKey    String
+  isActive  Boolean    @default(false)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   @@map("ai_configurations")
 }
@@ -395,38 +407,65 @@ enum RulesEngineExecutionStatus {
   COMPLETED
   FAILED
   CANCELLED
-} 
+}
+
+enum RuleStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
 
 // New models for advanced campaign execution
 
 model TLPArtifact {
-  id              String   @id @default(cuid())
-  campaignId      String
-  artifactType   String   // POINT_TYPE, POINT_ISSUE, ACCRUAL_OFFER, REDEMPTION_OFFER, MEMBER
-  artifactName   String
-  apiCall        String   // The API call that was made
-  response       String   // The response from TLP
-  status         String   // SUCCESS, FAILED, PENDING
-  errorDetails   String?  // Error details if failed
-  createdAt      DateTime @default(now())
-  
+  id           String   @id @default(cuid())
+  campaignId   String
+  artifactType String // POINT_TYPE, POINT_ISSUE, ACCRUAL_OFFER, REDEMPTION_OFFER, MEMBER
+  artifactName String
+  apiCall      String // The API call that was made
+  response     String // The response from TLP
+  status       String // SUCCESS, FAILED, PENDING
+  errorDetails String? // Error details if failed
+  createdAt    DateTime @default(now())
+
   // Relationships
-  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
   @@map("tlp_artifacts")
 }
 
 model CampaignExecutionLog {
-  id              String   @id @default(cuid())
-  campaignId      String
-  executedBy      String   // User ID who executed the campaign
-  executionData   String   // JSON string of execution details
-  success         Boolean
-  executionTime   Int      // Execution time in milliseconds
-  createdAt       DateTime @default(now())
-  
+  id            String   @id @default(cuid())
+  campaignId    String
+  executedBy    String // User ID who executed the campaign
+  executionData String // JSON string of execution details
+  success       Boolean
+  executionTime Int // Execution time in milliseconds
+  createdAt     DateTime @default(now())
+
   // Relationships
-  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
   @@map("campaign_execution_logs")
-} 
+}
+
+model CampaignParticipant {
+  id            String   @id @default(cuid())
+  campaignId    String
+  userId        String
+  participantId String? // TLP member ID
+  currentPoints Int      @default(0)
+  goalProgress  Decimal  @default(0) @db.Decimal(5, 2) // Percentage
+  isEnrolled    Boolean  @default(true)
+  enrolledAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relationships
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation("CampaignParticipant", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, campaignId])
+  @@map("campaign_participants")
+}
