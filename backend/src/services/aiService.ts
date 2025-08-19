@@ -1,354 +1,506 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { logger } from '../utils/logger';
+import { logger } from '../utils/logger'
 import { 
-  SchemaAnalysis, 
-  GeneratedRules, 
-  GeneratedCode, 
-  TableInfo, 
-  FieldInfo, 
-  RelationshipInfo 
-} from '@incentiva/shared';
+  TransactionJSONSchema, 
+  JSONRuleSet, 
+  DataExtractionQueries,
+  RuleDefinition,
+  RuleCondition,
+  RuleCalculation
+} from '@incentiva/shared'
+
+export interface AIConfig {
+  apiKey: string
+  model: string
+  endpoint: string
+}
+
+export interface AIGenerationResult {
+  success: boolean
+  data?: any
+  error?: string
+  usage?: {
+    inputTokens: number
+    outputTokens: number
+    totalCost: number
+  }
+}
 
 export class AIService {
-  private client: Anthropic;
+  private config: AIConfig
 
-  constructor() {
-    this.client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY!
-    });
+  constructor(config: AIConfig) {
+    this.config = config
   }
 
-  async analyzeSchema(schema: string): Promise<SchemaAnalysis> {
+  private async callAnthropic(prompt: string, systemPrompt?: string): Promise<AIGenerationResult> {
     try {
-      const prompt = this.buildSchemaAnalysisPrompt(schema);
-      
-      const response = await this.client.completions.create({
-        prompt: `\n\nHuman: ${prompt}\n\nAssistant:`,
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens_to_sample: 4096,
-        temperature: 0.1
-      });
-
-      const analysis = this.parseSchemaAnalysis(response.completion);
-      
-      logger.info('Schema analysis completed', {
-        understandingScore: analysis.understandingScore,
-        tablesCount: analysis.tables.length,
-        relationshipsCount: analysis.relationships.length
-      });
-
-      return analysis;
-    } catch (error) {
-      logger.error('Schema analysis failed:', error);
-      throw new Error('Failed to analyze schema');
-    }
-  }
-
-  async generateRules(requirements: string, schema: SchemaAnalysis): Promise<GeneratedRules> {
-    try {
-      const prompt = this.buildRuleGenerationPrompt(requirements, schema);
-      
-      const response = await this.client.completions.create({
-        prompt: `\n\nHuman: ${prompt}\n\nAssistant:`,
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens_to_sample: 4096,
-        temperature: 0.2
-      });
-
-      const rules = this.parseGeneratedRules(response.completion);
-      
-      logger.info('Rules generation completed', {
-        goalsCount: rules.rules?.goalRules?.length || 0,
-        eligibilityCount: rules.rules?.eligibilityRules?.length || 0,
-        prizesCount: rules.rules?.prizeRules?.length || 0,
-        understandingScore: rules.understandingScore
-      });
-
-      return rules;
-    } catch (error) {
-      logger.error('Rules generation failed:', error);
-      throw new Error('Failed to generate rules');
-    }
-  }
-
-  async generateCode(rules: GeneratedRules, schema: SchemaAnalysis): Promise<GeneratedCode> {
-    try {
-      const prompt = this.buildCodeGenerationPrompt(rules, schema);
-      
-      const response = await this.client.completions.create({
-        prompt: `\n\nHuman: ${prompt}\n\nAssistant:`,
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens_to_sample: 4096,
-        temperature: 0.1
-      });
-
-      const code = this.parseGeneratedCode(response.completion);
-      
-      logger.info('Code generation completed', {
-        hasTypeScript: !!code.typescript,
-        hasSQL: !!code.sql,
-        hasValidation: !!code.validation,
-        hasDocumentation: !!code.documentation
-      });
-
-      return code;
-    } catch (error) {
-      logger.error('Code generation failed:', error);
-      throw new Error('Failed to generate code');
-    }
-  }
-
-  async generateGraphics(description: string): Promise<string> {
-    try {
-      const prompt = this.buildGraphicsPrompt(description);
-      
-      const response = await this.client.completions.create({
-        prompt: `\n\nHuman: ${prompt}\n\nAssistant:`,
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens_to_sample: 1024,
-        temperature: 0.7
-      });
-
-      // For now, return a placeholder URL
-      // In production, this would integrate with an image generation service
-      const imageUrl = `https://generated-graphics.incentiva.com/${this.generateSlug(description)}.png`;
-      
-      logger.info('Graphics generation completed', {
-        description,
-        imageUrl
-      });
-
-      return imageUrl;
-    } catch (error) {
-      logger.error('Graphics generation failed:', error);
-      throw new Error('Failed to generate graphics');
-    }
-  }
-
-  private buildSchemaAnalysisPrompt(schema: string): string {
-    return `Analyze the following database schema and provide a comprehensive understanding:
-
-Schema: ${schema}
-
-Please provide your analysis in the following JSON format:
-{
-  "tables": [
-    {
-      "name": "table_name",
-      "fields": [
-        {
-          "name": "field_name",
-          "type": "data_type",
-          "nullable": true/false,
-          "description": "field_description"
-        }
-      ],
-      "primaryKey": "primary_key_field",
-      "foreignKeys": [
-        {
-          "field": "foreign_key_field",
-          "referencesTable": "referenced_table",
-          "referencesField": "referenced_field"
-        }
-      ]
-    }
-  ],
-  "relationships": [
-    {
-      "fromTable": "table_name",
-      "fromField": "field_name",
-      "toTable": "referenced_table",
-      "toField": "referenced_field",
-      "relationshipType": "one-to-one|one-to-many|many-to-many"
-    }
-  ],
-  "understandingScore": 0.85,
-  "feedback": "Analysis feedback and suggestions",
-  "requiredFields": ["field1", "field2", "field3"]
-}
-
-Focus on identifying:
-1. Sales-related tables (orders, customers, products, etc.)
-2. Key relationships between tables
-3. Fields needed for loyalty campaign calculations
-4. Data types and constraints
-5. Potential issues or missing information
-
-Provide a confidence score (0.0 to 1.0) for your understanding of the schema.`;
-  }
-
-  private buildRuleGenerationPrompt(requirements: string, schema: SchemaAnalysis): string {
-    return `Based on the campaign requirements and database schema, generate loyalty campaign rules:
-
-Campaign Requirements: ${requirements}
-
-Database Schema Analysis: ${JSON.stringify(schema, null, 2)}
-
-Please generate rules in the following JSON format:
-{
-  "goals": [
-    {
-      "type": "individual|regional|team",
-      "target": 50000,
-      "currency": "BRL",
-      "description": "Goal description",
-      "calculationLogic": "SQL or TypeScript logic for calculation"
-    }
-  ],
-  "eligibility": [
-    {
-      "condition": "eligibility_condition",
-      "description": "Condition description",
-      "validationLogic": "Validation code"
-    }
-  ],
-  "prizes": [
-    {
-      "name": "Prize name",
-      "description": "Prize description",
-      "pointCost": 50000,
-      "imageUrl": "generated_image_url",
-      "redemptionCode": "optional_redemption_code"
-    }
-  ],
-  "generatedCode": "Complete TypeScript code for campaign execution",
-  "validationErrors": ["error1", "error2"]
-}
-
-Focus on:
-1. Translating natural language requirements into executable rules
-2. Creating appropriate goals based on the schema
-3. Defining eligibility criteria
-4. Specifying redemption prizes
-5. Generating executable code for TLP integration`;
-  }
-
-  private buildCodeGenerationPrompt(rules: GeneratedRules, schema: SchemaAnalysis): string {
-    return `Generate executable code for the loyalty campaign based on the rules and schema:
-
-Generated Rules: ${JSON.stringify(rules, null, 2)}
-Database Schema: ${JSON.stringify(schema, null, 2)}
-
-Please provide code in the following JSON format:
-{
-  "typescript": "Complete TypeScript class for campaign execution",
-  "sql": "SQL queries for data extraction and calculation",
-  "validation": "Validation functions for data integrity",
-  "documentation": "Comprehensive documentation for the generated code"
-}
-
-The TypeScript code should include:
-1. Campaign class with goal calculation methods
-2. TLP API integration methods
-3. Data validation and error handling
-4. Real-time progress tracking
-5. Point allocation logic
-
-The SQL should include:
-1. Queries for extracting relevant data
-2. Calculations for goal progress
-3. Aggregations for regional/team goals
-4. Filters for eligibility criteria`;
-  }
-
-  private buildGraphicsPrompt(description: string): string {
-    return `Create a professional graphic description for a loyalty campaign offer:
-
-Offer Description: ${description}
-
-Please provide a detailed description for generating a professional graphic that would be suitable for a loyalty campaign offer. Include:
-1. Visual style and color scheme
-2. Layout and composition
-3. Text elements and typography
-4. Imagery and icons
-5. Professional branding elements
-
-The graphic should be appealing and motivate users to participate in the campaign.`;
-  }
-
-  private parseSchemaAnalysis(text: string): SchemaAnalysis {
-    try {
-      // Extract JSON from the response
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
-      }
-
-      const data = JSON.parse(jsonMatch[0]);
-      
-      return {
-        tables: data.tables || [],
-        relationships: data.relationships || [],
-        understandingScore: data.understandingScore || 0.5,
-        feedback: data.feedback || 'No feedback provided',
-        requiredFields: data.requiredFields || []
-      };
-    } catch (error) {
-      logger.error('Failed to parse schema analysis:', error);
-      throw new Error('Failed to parse schema analysis response');
-    }
-  }
-
-  private parseGeneratedRules(text: string): GeneratedRules {
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
-      }
-
-      const data = JSON.parse(jsonMatch[0]);
-      
-      return {
-        campaignId: data.campaignId || '',
-        schema: data.schema || { tables: [], relationships: [], understandingScore: 0, feedback: '' },
-        rules: {
-          goalRules: data.rules?.goalRules || [],
-          eligibilityRules: data.rules?.eligibilityRules || [],
-          prizeRules: data.rules?.prizeRules || []
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': this.config.apiKey,
+          'anthropic-version': '2023-06-01'
         },
-        generatedCode: data.generatedCode || {},
-        understandingScore: data.understandingScore || 0,
-        feedback: data.feedback || ''
-      };
-    } catch (error) {
-      logger.error('Failed to parse generated rules:', error);
-      throw new Error('Failed to parse rules response');
-    }
-  }
+        body: JSON.stringify({
+          model: this.config.model || 'claude-3-5-sonnet-20241022',
+          max_tokens: 4000,
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          system: systemPrompt || 'You are an expert business rules analyst and database schema designer. Generate precise, executable JSON schemas and rule sets based on natural language business requirements.'
+        })
+      })
 
-  private parseGeneratedCode(text: string): GeneratedCode {
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
+      if (!response.ok) {
+        const errorData = await response.json() as any
+        throw new Error(`Anthropic API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`)
       }
 
-      const data = JSON.parse(jsonMatch[0]);
+      const data = await response.json() as any
       
+      logger.info('Anthropic API call successful', {
+        model: this.config.model,
+        inputTokens: data.usage?.input_tokens,
+        outputTokens: data.usage?.output_tokens,
+        responseLength: data.content?.[0]?.text?.length || 0
+      })
+
       return {
-        // unified shape for GeneratedCode, map optional fields if present
-        typescript: data.typescript || '',
-        sql: data.sql || '',
-        validation: data.validation || '',
-        documentation: data.documentation || '',
-        dataExtractionQuery: data.dataExtractionQuery || '',
-        rulesApplicationLogic: data.rulesApplicationLogic || '',
-        tlpIntegrationCode: data.tlpIntegrationCode || '',
-        microserviceCode: data.microserviceCode || '',
-        testCode: data.testCode || ''
-      } as any;
-    } catch (error) {
-      logger.error('Failed to parse generated code:', error);
-      throw new Error('Failed to parse code response');
+        success: true,
+        data: data.content?.[0]?.text,
+        usage: {
+          inputTokens: data.usage?.input_tokens || 0,
+          outputTokens: data.usage?.output_tokens || 0,
+          totalCost: this.calculateCost(data.usage?.input_tokens || 0, data.usage?.output_tokens || 0)
+        }
+      }
+    } catch (error: any) {
+      logger.error('Anthropic API call failed', {
+        error: error.message,
+        model: this.config.model,
+        promptLength: prompt.length
+      })
+
+      return {
+        success: false,
+        error: error.message
+      }
     }
   }
 
-  private generateSlug(text: string): string {
-    return text
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
+  private calculateCost(inputTokens: number, outputTokens: number): number {
+    // Claude 3.5 Sonnet pricing (as of 2024)
+    const inputCostPer1K = 0.003
+    const outputCostPer1K = 0.015
+    
+    return (inputTokens * inputCostPer1K / 1000) + (outputTokens * outputCostPer1K / 1000)
+  }
+
+  /**
+   * Generate transaction JSON schema from natural language rules
+   */
+  async generateTransactionSchema(rules: string, databaseSchema?: string): Promise<AIGenerationResult> {
+    try {
+      logger.info('Generating transaction schema', { rulesLength: rules.length })
+
+      const prompt = `
+Generate a comprehensive JSON schema for transaction processing based on the following business rules:
+
+BUSINESS RULES:
+${rules}
+
+${databaseSchema ? `EXISTING DATABASE SCHEMA:
+${databaseSchema}` : ''}
+
+REQUIREMENTS:
+1. Create a JSON schema that captures all fields needed for transaction processing
+2. Include field types, validation rules, and descriptions
+3. Ensure the schema supports the business rules specified
+4. Add any computed fields that might be needed for rule evaluation
+5. Include metadata fields for tracking and auditing
+
+OUTPUT FORMAT:
+Return ONLY a valid JSON schema object with no additional text or explanation.
+
+EXAMPLE STRUCTURE:
+{
+  "type": "object",
+  "properties": {
+    "transactionId": { "type": "string", "description": "Unique transaction identifier" },
+    "amount": { "type": "number", "description": "Transaction amount in campaign currency" },
+    "productLine": { "type": "string", "description": "Product line category" },
+    "participantId": { "type": "string", "description": "Participant who made the sale" },
+    "transactionDate": { "type": "string", "format": "date-time", "description": "Transaction timestamp" }
+  },
+  "required": ["transactionId", "amount", "participantId", "transactionDate"]
+}
+`
+
+      const result = await this.callAnthropic(prompt)
+      
+      if (result.success && result.data) {
+        try {
+          const schema = JSON.parse(result.data)
+          logger.info('Transaction schema generated successfully', {
+            schemaFields: Object.keys(schema.properties || {}).length,
+            requiredFields: schema.required?.length || 0
+          })
+          
+          return {
+            ...result,
+            data: schema
+          }
+        } catch (parseError: any) {
+          logger.error('Failed to parse generated schema JSON', {
+            error: parseError.message,
+            rawResponse: result.data
+          })
+          
+          return {
+            success: false,
+            error: `Generated schema is not valid JSON: ${parseError.message}`
+          }
+        }
+      }
+      
+      return result
+    } catch (error: any) {
+      logger.error('Failed to generate transaction schema', {
+        error: error.message,
+        rules: rules.substring(0, 100) + '...'
+      })
+      
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  }
+
+  /**
+   * Generate executable JSON rules from natural language
+   */
+  async generateJSONRules(rules: string, transactionSchema: any): Promise<AIGenerationResult> {
+    try {
+      logger.info('Generating JSON rules', { rulesLength: rules.length })
+
+      const prompt = `
+Generate executable JSON rules based on the following business rules and transaction schema:
+
+BUSINESS RULES:
+${rules}
+
+TRANSACTION SCHEMA:
+${JSON.stringify(transactionSchema, null, 2)}
+
+REQUIREMENTS:
+1. Create a JSON rule set that can be executed at runtime
+2. Include eligibility rules, accrual rules, and bonus rules
+3. Use the transaction schema fields for rule evaluation
+4. Make rules flexible and configurable
+5. Include validation and error handling logic
+
+OUTPUT FORMAT:
+Return ONLY a valid JSON object with no additional text or explanation.
+
+EXAMPLE STRUCTURE:
+{
+  "eligibilityRules": [
+    {
+      "id": "active_employee",
+      "condition": "participant.status === 'ACTIVE'",
+      "description": "Only active employees can participate"
+    }
+  ],
+  "accrualRules": [
+    {
+      "id": "premium_line_points",
+      "condition": "productLine === 'Premium Line'",
+      "calculation": "Math.ceil(amount / 200)",
+      "description": "1 point per 200 MXN for Premium Line products"
+    }
+  ],
+  "bonusRules": [
+    {
+      "id": "individual_goal_bonus",
+      "condition": "individualGoal >= 200000",
+      "bonus": 50000,
+      "description": "50,000 bonus points for achieving individual goal"
+    }
+  ]
+}
+`
+
+      const result = await this.callAnthropic(prompt)
+      
+      if (result.success && result.data) {
+        try {
+          const rules = JSON.parse(result.data)
+          logger.info('JSON rules generated successfully', {
+            eligibilityRules: rules.eligibilityRules?.length || 0,
+            accrualRules: rules.accrualRules?.length || 0,
+            bonusRules: rules.bonusRules?.length || 0
+          })
+          
+          return {
+            ...result,
+            data: rules
+          }
+        } catch (parseError: any) {
+          logger.error('Failed to parse generated rules JSON', {
+            error: parseError.message,
+            rawResponse: result.data
+          })
+          
+          return {
+            success: false,
+            error: `Generated rules are not valid JSON: ${parseError.message}`
+          }
+        }
+      }
+      
+      return result
+    } catch (error: any) {
+      logger.error('Failed to generate JSON rules', {
+        error: error.message,
+        rules: rules.substring(0, 100) + '...'
+      })
+      
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  }
+
+  /**
+   * Generate data extraction queries from database schema
+   */
+  async generateDataExtractionQueries(databaseSchema: string, campaignRules: string): Promise<AIGenerationResult> {
+    try {
+      logger.info('Generating data extraction queries', { 
+        schemaLength: databaseSchema.length,
+        rulesLength: campaignRules.length
+      })
+
+      const prompt = `
+Generate SQL queries for data extraction based on the following database schema and campaign rules:
+
+DATABASE SCHEMA:
+${databaseSchema}
+
+CAMPAIGN RULES:
+${campaignRules}
+
+REQUIREMENTS:
+1. Create a one-time load query to extract historical data
+2. Create an incremental load query for ongoing data extraction
+3. Ensure queries are optimized for performance
+4. Include proper filtering based on campaign rules
+5. Add data transformation logic if needed
+6. Include error handling and logging
+
+OUTPUT FORMAT:
+Return ONLY a valid JSON object with no additional text or explanation.
+
+EXAMPLE STRUCTURE:
+{
+  "oneTimeLoad": {
+    "query": "SELECT ... FROM ... WHERE ...",
+    "description": "Extract historical data for campaign initialization",
+    "estimatedRows": 10000,
+    "executionTime": "5-10 minutes"
+  },
+  "incrementalLoad": {
+    "query": "SELECT ... FROM ... WHERE ... AND ... > $1",
+    "description": "Extract new/updated data since last run",
+    "parameters": ["lastExtractionTimestamp"],
+    "estimatedRows": "100-1000 per run",
+    "executionTime": "1-2 minutes"
+  },
+  "dataTransformation": {
+    "fieldMappings": {
+      "customer_id": "participantId",
+      "sale_amount": "amount",
+      "product_category": "productLine"
+    },
+    "calculations": [
+      "points = Math.ceil(amount / 200)"
+    ]
+  }
+}
+`
+
+      const result = await this.callAnthropic(prompt)
+      
+      if (result.success && result.data) {
+        try {
+          const queries = JSON.parse(result.data)
+          logger.info('Data extraction queries generated successfully', {
+            hasOneTimeLoad: !!queries.oneTimeLoad,
+            hasIncrementalLoad: !!queries.incrementalLoad,
+            hasTransformation: !!queries.dataTransformation
+          })
+          
+          return {
+            ...result,
+            data: queries
+          }
+        } catch (parseError: any) {
+          logger.error('Failed to parse generated queries JSON', {
+            error: parseError.message,
+            rawResponse: result.data
+          })
+          
+          return {
+            success: false,
+            error: `Generated queries are not valid JSON: ${parseError.message}`
+          }
+        }
+      }
+      
+      return result
+    } catch (error: any) {
+      logger.error('Failed to generate data extraction queries', {
+        error: error.message
+      })
+      
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  }
+
+  /**
+   * Generate complete campaign artifacts (schema, rules, and queries)
+   */
+  async generateCampaignArtifacts(
+    campaignRules: string, 
+    databaseSchema?: string
+  ): Promise<{
+    transactionSchema: AIGenerationResult
+    jsonRules: AIGenerationResult
+    dataQueries: AIGenerationResult
+  }> {
+    try {
+      logger.info('Starting campaign artifact generation', {
+        rulesLength: campaignRules.length,
+        hasDatabaseSchema: !!databaseSchema
+      })
+
+      // Step 1: Generate transaction schema
+      const transactionSchema = await this.generateTransactionSchema(campaignRules, databaseSchema)
+      
+      if (!transactionSchema.success) {
+        throw new Error(`Failed to generate transaction schema: ${transactionSchema.error}`)
+      }
+
+      // Step 2: Generate JSON rules using the schema
+      const jsonRules = await this.generateJSONRules(campaignRules, transactionSchema.data)
+      
+      if (!jsonRules.success) {
+        throw new Error(`Failed to generate JSON rules: ${jsonRules.error}`)
+      }
+
+      // Step 3: Generate data extraction queries
+      const dataQueries = await this.generateDataExtractionQueries(
+        databaseSchema || 'No database schema provided',
+        campaignRules
+      )
+
+      logger.info('Campaign artifact generation completed', {
+        schemaSuccess: transactionSchema.success,
+        rulesSuccess: jsonRules.success,
+        queriesSuccess: dataQueries.success
+      })
+
+      return {
+        transactionSchema,
+        jsonRules,
+        dataQueries
+      }
+    } catch (error: any) {
+      logger.error('Campaign artifact generation failed', {
+        error: error.message
+      })
+      
+      throw error
+    }
+  }
+
+  /**
+   * Validate generated rules against transaction schema
+   */
+  async validateRulesAgainstSchema(rules: any, schema: any): Promise<{
+    valid: boolean
+    errors: string[]
+    warnings: string[]
+  }> {
+    const errors: string[] = []
+    const warnings: string[] = []
+
+    try {
+      // Check if rules reference schema fields that don't exist
+      const schemaFields = Object.keys(schema.properties || {})
+      
+      // Extract field references from rules
+      const ruleText = JSON.stringify(rules)
+      
+      // Simple validation - check for obvious field mismatches
+      if (rules.accrualRules) {
+        for (const rule of rules.accrualRules) {
+          if (rule.condition) {
+            // Check if condition references valid schema fields
+            const fieldMatches = schemaFields.filter(field => 
+              rule.condition.includes(field)
+            )
+            
+            if (fieldMatches.length === 0) {
+              warnings.push(`Accrual rule condition may reference non-existent fields: ${rule.condition}`)
+            }
+          }
+        }
+      }
+
+      // Check for required fields in schema
+      const requiredFields = schema.required || []
+      if (requiredFields.length === 0) {
+        warnings.push('Schema has no required fields - this may cause validation issues')
+      }
+
+      // Check for common field types
+      const hasParticipantId = schemaFields.some(field => 
+        field.toLowerCase().includes('participant') || field.toLowerCase().includes('user')
+      )
+      if (!hasParticipantId) {
+        warnings.push('Schema may be missing participant/user identification field')
+      }
+
+      const hasAmount = schemaFields.some(field => 
+        field.toLowerCase().includes('amount') || field.toLowerCase().includes('value')
+      )
+      if (!hasAmount) {
+        warnings.push('Schema may be missing transaction amount/value field')
+      }
+
+      return {
+        valid: errors.length === 0,
+        errors,
+        warnings
+      }
+    } catch (error: any) {
+      errors.push(`Validation failed: ${error.message}`)
+      return {
+        valid: false,
+        errors,
+        warnings
+      }
+    }
   }
 }
 
-export const aiService = new AIService(); 
+export default AIService 

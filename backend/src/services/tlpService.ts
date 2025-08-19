@@ -1,409 +1,553 @@
-import axios, { AxiosInstance } from 'axios';
-import { logger } from '../utils/logger';
-import { 
-  TLPPointType, 
-  TLPOffer, 
-  TLPTransaction
-} from '@incentiva/shared';
+import axios from 'axios'
+import { logger } from '../utils/logger'
+import { TLPMember, TLPPointType, TLPAccrualOffer, TLPArtifact } from '@incentiva/shared'
+
+export interface TLPConfig {
+  apiKey: string
+  endpointUrl: string
+}
+
+export interface TLPArtifactLog {
+  id: string
+  campaignId: string
+  artifactType: 'POINT_TYPE' | 'POINT_ISSUE' | 'ACCRUAL_OFFER' | 'REDEMPTION_OFFER' | 'MEMBER'
+  artifactName: string
+  apiCall: string
+  response: string
+  status: 'SUCCESS' | 'FAILED' | 'PENDING'
+  createdAt: Date
+  errorDetails?: string
+}
 
 export class TLPService {
-  private client: AxiosInstance;
-  private apiKey: string;
-  private endpointUrl: string;
+  private config: TLPConfig
+  private baseURL: string
 
-  constructor(apiKey?: string, endpointUrl?: string) {
-    this.apiKey = apiKey || process.env.TLP_DEFAULT_API_KEY!;
-    this.endpointUrl = endpointUrl || process.env.TLP_DEFAULT_ENDPOINT!;
+  constructor(config: TLPConfig) {
+    this.config = config
+    this.baseURL = config.endpointUrl
+  }
+
+  private async makeTLPRequest(endpoint: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE', data?: any) {
+    try {
+      const response = await axios({
+        method,
+        url: `${this.baseURL}${endpoint}`,
+        headers: {
+          'Authorization': `Bearer ${this.config.apiKey}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        data,
+        timeout: 30000 // 30 second timeout
+      })
+
+      logger.info('TLP API call successful', {
+        endpoint,
+        method,
+        statusCode: response.status,
+        responseSize: JSON.stringify(response.data).length
+      })
+
+      return response.data
+    } catch (error: any) {
+      logger.error('TLP API call failed', {
+        endpoint,
+        method,
+        error: error.message,
+        statusCode: error.response?.status,
+        responseData: error.response?.data
+      })
+
+      throw new Error(`TLP API call failed: ${error.message}`)
+    }
+  }
+
+  /**
+   * Create a new point type in TLP
+   */
+  async createPointType(campaign: any): Promise<TLPArtifactLog> {
+    try {
+      logger.info('Creating TLP point type', { campaignId: campaign.id, campaignName: campaign.name })
+
+      const pointTypeData = {
+        name: `${campaign.name}_Points`,
+        description: `Loyalty points for ${campaign.name} campaign`,
+        currency: campaign.campaignCurrency || 'MXN',
+        isActive: true,
+        metadata: {
+          campaignId: campaign.id,
+          campaignName: campaign.name,
+          amountPerPoint: campaign.amountPerPoint
+        }
+      }
+
+      const response = await this.makeTLPRequest('/api/point-types', 'POST', pointTypeData)
+
+      const artifactLog: TLPArtifactLog = {
+        id: `pt_${Date.now()}`,
+        campaignId: campaign.id,
+        artifactType: 'POINT_TYPE',
+        artifactName: pointTypeData.name,
+        apiCall: JSON.stringify(pointTypeData, null, 2),
+        response: JSON.stringify(response, null, 2),
+        status: 'SUCCESS',
+        createdAt: new Date()
+      }
+
+      logger.info('TLP point type created successfully', {
+        campaignId: campaign.id,
+        pointTypeId: response.id,
+        artifactLogId: artifactLog.id
+      })
+
+      return artifactLog
+    } catch (error: any) {
+      const artifactLog: TLPArtifactLog = {
+        id: `pt_${Date.now()}`,
+        campaignId: campaign.id,
+        artifactType: 'POINT_TYPE',
+        artifactName: `${campaign.name}_Points`,
+        apiCall: JSON.stringify({ campaignId: campaign.id, campaignName: campaign.name }, null, 2),
+        response: '',
+        status: 'FAILED',
+        createdAt: new Date(),
+        errorDetails: error.message
+      }
+
+      logger.error('Failed to create TLP point type', {
+        campaignId: campaign.id,
+        error: error.message,
+        artifactLogId: artifactLog.id
+      })
+
+      return artifactLog
+    }
+  }
+
+  /**
+   * Mint points for a campaign
+   */
+  async mintCampaignPoints(campaign: any, totalPoints: number): Promise<TLPArtifactLog> {
+    try {
+      logger.info('Minting campaign points', { 
+        campaignId: campaign.id, 
+        campaignName: campaign.name, 
+        totalPoints 
+      })
+
+      const mintData = {
+        pointTypeName: `${campaign.name}_Points`,
+        amount: totalPoints,
+        description: `Initial point mint for ${campaign.name} campaign`,
+        metadata: {
+          campaignId: campaign.id,
+          campaignName: campaign.name,
+          mintType: 'CAMPAIGN_INITIAL'
+        }
+      }
+
+      const response = await this.makeTLPRequest('/api/point-issues', 'POST', mintData)
+
+      const artifactLog: TLPArtifactLog = {
+        id: `pi_${Date.now()}`,
+        campaignId: campaign.id,
+        artifactType: 'POINT_ISSUE',
+        artifactName: `Mint_${campaign.name}_${totalPoints}pts`,
+        apiCall: JSON.stringify(mintData, null, 2),
+        response: JSON.stringify(response, null, 2),
+        status: 'SUCCESS',
+        createdAt: new Date()
+      }
+
+      logger.info('Campaign points minted successfully', {
+        campaignId: campaign.id,
+        pointIssueId: response.id,
+        totalPoints,
+        artifactLogId: artifactLog.id
+      })
+
+      return artifactLog
+    } catch (error: any) {
+      const artifactLog: TLPArtifactLog = {
+        id: `pi_${Date.now()}`,
+        campaignId: campaign.id,
+        artifactType: 'POINT_ISSUE',
+        artifactName: `Mint_${campaign.name}_${totalPoints}pts`,
+        apiCall: JSON.stringify({ campaignId: campaign.id, totalPoints }, null, 2),
+        response: '',
+        status: 'FAILED',
+        createdAt: new Date(),
+        errorDetails: error.message
+      }
+
+      logger.error('Failed to mint campaign points', {
+        campaignId: campaign.id,
+        error: error.message,
+        artifactLogId: artifactLog.id
+      })
+
+      return artifactLog
+    }
+  }
+
+  /**
+   * Create accrual offer for individual goal achievement
+   */
+  async createIndividualGoalAccrualOffer(campaign: any, participant: any, bonusPoints: number): Promise<TLPArtifactLog> {
+    try {
+      logger.info('Creating individual goal accrual offer', {
+        campaignId: campaign.id,
+        participantId: participant.id,
+        bonusPoints
+      })
+
+      const offerData = {
+        name: `${campaign.name}_Individual_Goal_${participant.firstName}`,
+        description: `Bonus points for achieving individual goal in ${campaign.name}`,
+        pointTypeName: `${campaign.name}_Points`,
+        points: bonusPoints,
+        isActive: true,
+        metadata: {
+          campaignId: campaign.id,
+          participantId: participant.id,
+          offerType: 'INDIVIDUAL_GOAL_BONUS'
+        }
+      }
+
+      const response = await this.makeTLPRequest('/api/accrual-offers', 'POST', offerData)
+
+      const artifactLog: TLPArtifactLog = {
+        id: `ao_${Date.now()}`,
+        campaignId: campaign.id,
+        artifactType: 'ACCRUAL_OFFER',
+        artifactName: offerData.name,
+        apiCall: JSON.stringify(offerData, null, 2),
+        response: JSON.stringify(response, null, 2),
+        status: 'SUCCESS',
+        createdAt: new Date()
+      }
+
+      logger.info('Individual goal accrual offer created successfully', {
+        campaignId: campaign.id,
+        participantId: participant.id,
+        offerId: response.id,
+        artifactLogId: artifactLog.id
+      })
+
+      return artifactLog
+    } catch (error: any) {
+      const artifactLog: TLPArtifactLog = {
+        id: `ao_${Date.now()}`,
+        campaignId: campaign.id,
+        artifactType: 'ACCRUAL_OFFER',
+        artifactName: `${campaign.name}_Individual_Goal_${participant.firstName}`,
+        apiCall: JSON.stringify({ campaignId: campaign.id, participantId: participant.id, bonusPoints }, null, 2),
+        response: '',
+        status: 'FAILED',
+        createdAt: new Date(),
+        errorDetails: error.message
+      }
+
+      logger.error('Failed to create individual goal accrual offer', {
+        campaignId: campaign.id,
+        participantId: participant.id,
+        error: error.message,
+        artifactLogId: artifactLog.id
+      })
+
+      return artifactLog
+    }
+  }
+
+  /**
+   * Create accrual offer for overall goal achievement
+   */
+  async createOverallGoalAccrualOffer(campaign: any, participant: any, bonusPoints: number): Promise<TLPArtifactLog> {
+    try {
+      logger.info('Creating overall goal accrual offer', {
+        campaignId: campaign.id,
+        participantId: participant.id,
+        bonusPoints
+      })
+
+      const offerData = {
+        name: `${campaign.name}_Overall_Goal_${participant.firstName}`,
+        description: `Bonus points for overall campaign goal achievement in ${campaign.name}`,
+        pointTypeName: `${campaign.name}_Points`,
+        points: bonusPoints,
+        isActive: true,
+        metadata: {
+          campaignId: campaign.id,
+          participantId: participant.id,
+          offerType: 'OVERALL_GOAL_BONUS'
+        }
+      }
+
+      const response = await this.makeTLPRequest('/api/accrual-offers', 'POST', offerData)
+
+      const artifactLog: TLPArtifactLog = {
+        id: `ao_${Date.now()}`,
+        campaignId: campaign.id,
+        artifactType: 'ACCRUAL_OFFER',
+        artifactName: offerData.name,
+        apiCall: JSON.stringify(offerData, null, 2),
+        response: JSON.stringify(response, null, 2),
+        status: 'SUCCESS',
+        createdAt: new Date()
+      }
+
+      logger.info('Overall goal accrual offer created successfully', {
+        campaignId: campaign.id,
+        participantId: participant.id,
+        offerId: response.id,
+        artifactLogId: artifactLog.id
+      })
+
+      return artifactLog
+    } catch (error: any) {
+      const artifactLog: TLPArtifactLog = {
+        id: `ao_${Date.now()}`,
+        campaignId: campaign.id,
+        artifactType: 'ACCRUAL_OFFER',
+        artifactName: `${campaign.name}_Overall_Goal_${participant.firstName}`,
+        apiCall: JSON.stringify({ campaignId: campaign.id, participantId: participant.id, bonusPoints }, null, 2),
+        response: '',
+        status: 'FAILED',
+        createdAt: new Date(),
+        errorDetails: error.message
+      }
+
+      logger.error('Failed to create overall goal accrual offer', {
+        campaignId: campaign.id,
+        participantId: participant.id,
+        error: error.message,
+        artifactLogId: artifactLog.id
+      })
+
+      return artifactLog
+    }
+  }
+
+  /**
+   * Create TLP member for participant
+   */
+  async createMember(participant: any, campaign: any): Promise<TLPArtifactLog> {
+    try {
+      logger.info('Creating TLP member', {
+        participantId: participant.id,
+        campaignId: campaign.id
+      })
+
+      const memberData = {
+        email: participant.email,
+        firstName: participant.firstName,
+        lastName: participant.lastName,
+        isActive: true,
+        metadata: {
+          participantId: participant.id,
+          campaignId: campaign.id,
+          campaignName: campaign.name
+        }
+      }
+
+      const response = await this.makeTLPRequest('/api/members', 'POST', memberData)
+
+      const artifactLog: TLPArtifactLog = {
+        id: `m_${Date.now()}`,
+        campaignId: campaign.id,
+        artifactType: 'MEMBER',
+        artifactName: `${participant.firstName}_${participant.lastName}`,
+        apiCall: JSON.stringify(memberData, null, 2),
+        response: JSON.stringify(response, null, 2),
+        status: 'SUCCESS',
+        createdAt: new Date()
+      }
+
+      logger.info('TLP member created successfully', {
+        participantId: participant.id,
+        campaignId: campaign.id,
+        memberId: response.id,
+        artifactLogId: artifactLog.id
+      })
+
+      return artifactLog
+    } catch (error: any) {
+      const artifactLog: TLPArtifactLog = {
+        id: `m_${Date.now()}`,
+        campaignId: campaign.id,
+        artifactType: 'MEMBER',
+        artifactName: `${participant.firstName}_${participant.lastName}`,
+        apiCall: JSON.stringify({ participantId: participant.id, campaignId: campaign.id }, null, 2),
+        response: '',
+        status: 'FAILED',
+        createdAt: new Date(),
+        errorDetails: error.message
+      }
+
+      logger.error('Failed to create TLP member', {
+        participantId: participant.id,
+        campaignId: campaign.id,
+        error: error.message,
+        artifactLogId: artifactLog.id
+      })
+
+      return artifactLog
+    }
+  }
+
+  /**
+   * Create dynamic accrual offer for transaction-based points
+   */
+  async createDynamicAccrualOffer(campaign: any, participant: any, transactionAmount: number): Promise<TLPArtifactLog> {
+    try {
+      const pointsEarned = Math.ceil(transactionAmount / (campaign.amountPerPoint || 1))
+      
+      logger.info('Creating dynamic accrual offer', {
+        campaignId: campaign.id,
+        participantId: participant.id,
+        transactionAmount,
+        pointsEarned
+      })
+
+      const offerData = {
+        name: `${campaign.name}_Dynamic_${participant.firstName}_${Date.now()}`,
+        description: `Points earned for transaction of ${campaign.campaignCurrency} ${transactionAmount}`,
+        pointTypeName: `${campaign.name}_Points`,
+        points: pointsEarned,
+        isActive: true,
+        metadata: {
+          campaignId: campaign.id,
+          participantId: participant.id,
+          offerType: 'TRANSACTION_ACCRUAL',
+          transactionAmount,
+          amountPerPoint: campaign.amountPerPoint
+        }
+      }
+
+      const response = await this.makeTLPRequest('/api/accrual-offers', 'POST', offerData)
+
+      const artifactLog: TLPArtifactLog = {
+        id: `dao_${Date.now()}`,
+        campaignId: campaign.id,
+        artifactType: 'ACCRUAL_OFFER',
+        artifactName: offerData.name,
+        apiCall: JSON.stringify(offerData, null, 2),
+        response: JSON.stringify(response, null, 2),
+        status: 'SUCCESS',
+        createdAt: new Date()
+      }
+
+      logger.info('Dynamic accrual offer created successfully', {
+        campaignId: campaign.id,
+        participantId: participant.id,
+        offerId: response.id,
+        pointsEarned,
+        artifactLogId: artifactLog.id
+      })
+
+      return artifactLog
+    } catch (error: any) {
+      const artifactLog: TLPArtifactLog = {
+        id: `dao_${Date.now()}`,
+        campaignId: campaign.id,
+        artifactType: 'ACCRUAL_OFFER',
+        artifactName: `${campaign.name}_Dynamic_${participant.firstName}_${Date.now()}`,
+        apiCall: JSON.stringify({ campaignId: campaign.id, participantId: participant.id, transactionAmount }, null, 2),
+        response: '',
+        status: 'FAILED',
+        createdAt: new Date(),
+        errorDetails: error.message
+      }
+
+      logger.error('Failed to create dynamic accrual offer', {
+        campaignId: campaign.id,
+        participantId: participant.id,
+        error: error.message,
+        artifactLogId: artifactLog.id
+      })
+
+      return artifactLog
+    }
+  }
+
+  /**
+   * Execute a complete campaign setup in TLP
+   */
+  async executeCampaignSetup(campaign: any, participants: any[]): Promise<TLPArtifactLog[]> {
+    const artifacts: TLPArtifactLog[] = []
     
-    this.client = axios.create({
-      baseURL: this.endpointUrl,
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      timeout: 30000
-    });
+    try {
+      logger.info('Starting campaign TLP setup', {
+        campaignId: campaign.id,
+        campaignName: campaign.name,
+        participantCount: participants.length
+      })
 
-    // Add response interceptor for logging
-    this.client.interceptors.response.use(
-      (response) => {
-        logger.debug('TLP API response', {
-          url: response.config.url,
-          method: response.config.method,
-          status: response.status
-        });
-        return response;
-      },
-      (error) => {
-        logger.error('TLP API error', {
-          url: error.config?.url,
-          method: error.config?.method,
-          status: error.response?.status,
-          message: error.message
-        });
-        return Promise.reject(error);
+      // 1. Create point type
+      const pointTypeArtifact = await this.createPointType(campaign)
+      artifacts.push(pointTypeArtifact)
+
+      if (pointTypeArtifact.status === 'FAILED') {
+        throw new Error('Failed to create point type, aborting campaign setup')
       }
-    );
-  }
 
-  // Point Type Management
-  async createPointType(pointType: TLPPointType): Promise<TLPPointType> {
-    try {
-      const response = await this.client.post('/points', pointType);
-      logger.info('Point type created', { pointTypeId: response.data.id });
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to create point type:', error);
-      throw new Error('Failed to create point type');
-    }
-  }
+      // 2. Mint campaign points
+      const totalPoints = campaign.totalPointsMinted || 1000000 // Default 1M points
+      const mintArtifact = await this.mintCampaignPoints(campaign, totalPoints)
+      artifacts.push(mintArtifact)
 
-  async updatePointType(id: string, pointType: Partial<TLPPointType>): Promise<TLPPointType> {
-    try {
-      const response = await this.client.put(`/points/${id}`, pointType);
-      logger.info('Point type updated', { pointTypeId: id });
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to update point type:', error);
-      throw new Error('Failed to update point type');
-    }
-  }
-
-  async getPointType(id: string): Promise<TLPPointType> {
-    try {
-      const response = await this.client.get(`/points/${id}`);
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to get point type:', error);
-      throw new Error('Failed to get point type');
-    }
-  }
-
-  async listPointTypes(): Promise<TLPPointType[]> {
-    try {
-      const response = await this.client.get('/points');
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to list point types:', error);
-      throw new Error('Failed to list point types');
-    }
-  }
-
-  // Offer Management
-  async createOffer(offer: TLPOffer): Promise<TLPOffer> {
-    try {
-      const response = await this.client.post('/offers', offer);
-      logger.info('Offer created', { offerId: response.data.id });
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to create offer:', error);
-      throw new Error('Failed to create offer');
-    }
-  }
-
-  async updateOffer(id: string, offer: Partial<TLPOffer>): Promise<TLPOffer> {
-    try {
-      const response = await this.client.put(`/offers/${id}`, offer);
-      logger.info('Offer updated', { offerId: id });
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to update offer:', error);
-      throw new Error('Failed to update offer');
-    }
-  }
-
-  async getOffer(id: string): Promise<TLPOffer> {
-    try {
-      const response = await this.client.get(`/offers/${id}`);
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to get offer:', error);
-      throw new Error('Failed to get offer');
-    }
-  }
-
-  async listOffers(filters?: Record<string, any>): Promise<TLPOffer[]> {
-    try {
-      const response = await this.client.get('/offers', { params: filters });
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to list offers:', error);
-      throw new Error('Failed to list offers');
-    }
-  }
-
-  async deleteOffer(id: string): Promise<void> {
-    try {
-      await this.client.delete(`/offers/${id}`);
-      logger.info('Offer deleted', { offerId: id });
-    } catch (error) {
-      logger.error('Failed to delete offer:', error);
-      throw new Error('Failed to delete offer');
-    }
-  }
-
-  // Transaction Management
-  async accruePoints(transaction: TLPTransaction): Promise<TLPTransaction> {
-    try {
-      const response = await this.client.post('/transactions/accrue', transaction);
-      logger.info('Points accrued', { 
-        memberId: transaction.memberId,
-        points: transaction.points,
-        transactionId: response.data.id
-      });
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to accrue points:', error);
-      throw new Error('Failed to accrue points');
-    }
-  }
-
-  async redeemPoints(transaction: TLPTransaction): Promise<TLPTransaction> {
-    try {
-      const response = await this.client.post('/transactions/redeem', transaction);
-      logger.info('Points redeemed', { 
-        memberId: transaction.memberId,
-        points: transaction.points,
-        transactionId: response.data.id
-      });
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to redeem points:', error);
-      throw new Error('Failed to redeem points');
-    }
-  }
-
-  async issuePoints(transaction: TLPTransaction): Promise<TLPTransaction> {
-    try {
-      const response = await this.client.post('/transactions/issue', transaction);
-      logger.info('Points issued', { 
-        memberId: transaction.memberId,
-        points: transaction.points,
-        transactionId: response.data.id
-      });
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to issue points:', error);
-      throw new Error('Failed to issue points');
-    }
-  }
-
-  async getTransaction(id: string): Promise<TLPTransaction> {
-    try {
-      const response = await this.client.get(`/transactions/${id}`);
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to get transaction:', error);
-      throw new Error('Failed to get transaction');
-    }
-  }
-
-  async listTransactions(filters?: Record<string, any>): Promise<TLPTransaction[]> {
-    try {
-      const response = await this.client.get('/transactions', { params: filters });
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to list transactions:', error);
-      throw new Error('Failed to list transactions');
-    }
-  }
-
-  // Member Management
-  async createMember(member: any): Promise<any> {
-    try {
-      const response = await this.client.post('/members', member);
-      logger.info('Member created', { memberId: response.data.id });
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to create member:', error);
-      throw new Error('Failed to create member');
-    }
-  }
-
-  async updateMember(id: string, member: any): Promise<any> {
-    try {
-      const response = await this.client.put(`/members/${id}`, member);
-      logger.info('Member updated', { memberId: id });
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to update member:', error);
-      throw new Error('Failed to update member');
-    }
-  }
-
-  async getMember(id: string): Promise<any> {
-    try {
-      const response = await this.client.get(`/members/${id}`);
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to get member:', error);
-      throw new Error('Failed to get member');
-    }
-  }
-
-  async listMembers(filters?: Record<string, any>): Promise<any[]> {
-    try {
-      const response = await this.client.get('/members', { params: filters });
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to list members:', error);
-      throw new Error('Failed to list members');
-    }
-  }
-
-  async getMemberBalance(memberId: string, pointTypeId: string): Promise<number> {
-    try {
-      const response = await this.client.get(`/members/${memberId}/balance/${pointTypeId}`);
-      return response.data.balance || 0;
-    } catch (error) {
-      logger.error('Failed to get member balance:', error);
-      throw new Error('Failed to get member balance');
-    }
-  }
-
-  // Tier Management
-  async createTier(tier: any): Promise<any> {
-    try {
-      const response = await this.client.post('/tiers', tier);
-      logger.info('Tier created', { tierId: response.data.id });
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to create tier:', error);
-      throw new Error('Failed to create tier');
-    }
-  }
-
-  async updateTier(id: string, tier: any): Promise<any> {
-    try {
-      const response = await this.client.put(`/tiers/${id}`, tier);
-      logger.info('Tier updated', { tierId: id });
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to update tier:', error);
-      throw new Error('Failed to update tier');
-    }
-  }
-
-  // Partner and Location Management
-  async createPartner(partner: any): Promise<any> {
-    try {
-      const response = await this.client.post('/partners', partner);
-      logger.info('Partner created', { partnerId: response.data.id });
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to create partner:', error);
-      throw new Error('Failed to create partner');
-    }
-  }
-
-  async createLocation(location: any): Promise<any> {
-    try {
-      const response = await this.client.post('/locations', location);
-      logger.info('Location created', { locationId: response.data.id });
-      return response.data;
-    } catch (error) {
-      logger.error('Failed to create location:', error);
-      throw new Error('Failed to create location');
-    }
-  }
-
-  // Health Check
-  async healthCheck(): Promise<boolean> {
-    try {
-      const response = await this.client.get('/health');
-      return response.status === 200;
-    } catch (error) {
-      logger.error('TLP health check failed:', error);
-      return false;
-    }
-  }
-
-  // Campaign-specific methods
-  async createCampaignPointType(campaignName: string): Promise<TLPPointType> {
-    const pointType: TLPPointType = {
-      name: `${campaignName} Campaign Points`,
-      description: `Points earned through ${campaignName} campaign`,
-      rank: 1,
-      enabled: true,
-      options: {
-        showZeroPointBalance: true
+      if (mintArtifact.status === 'FAILED') {
+        throw new Error('Failed to mint campaign points, aborting campaign setup')
       }
-    };
 
-    return this.createPointType(pointType);
-  }
+      // 3. Create members for all participants
+      for (const participant of participants) {
+        const memberArtifact = await this.createMember(participant, campaign)
+        artifacts.push(memberArtifact)
+      }
 
-  async createAccrualOffer(
-    campaignName: string,
-    pointTypeId: string,
-    points: number,
-    minimumSpend: number
-  ): Promise<TLPOffer> {
-    const offer: TLPOffer = {
-      offerType: 'accrual',
-      offerSubtype: 'dynamic',
-      name: `${campaignName} Goal Achievement`,
-      description: `Earn ${points} points for achieving ${campaignName} goals`,
-      points,
-      pointType: pointTypeId,
-      minimumSpend,
-      enabled: true,
-      online: false,
-      location: true,
-      // Derived fields for compatibility
-      isActive: true,
-      currentRedemptions: 0,
-      pointCost: points
-    };
+      // 4. Create individual goal bonus offers
+      if (campaign.individualGoalBonus) {
+        for (const participant of participants) {
+          const individualOffer = await this.createIndividualGoalAccrualOffer(
+            campaign, 
+            participant, 
+            campaign.individualGoalBonus
+          )
+          artifacts.push(individualOffer)
+        }
+      }
 
-    return this.createOffer(offer);
-  }
+      // 5. Create overall goal bonus offers
+      if (campaign.overallGoalBonus) {
+        for (const participant of participants) {
+          const overallOffer = await this.createOverallGoalAccrualOffer(
+            campaign, 
+            participant, 
+            campaign.overallGoalBonus
+          )
+          artifacts.push(overallOffer)
+        }
+      }
 
-  async createRedemptionOffer(
-    campaignName: string,
-    pointTypeId: string,
-    prizeName: string,
-    prizeDescription: string,
-    pointCost: number,
-    imageUrl?: string
-  ): Promise<TLPOffer> {
-    const offer: TLPOffer = {
-      offerType: 'redemption',
-      offerSubtype: 'product',
-      name: prizeName,
-      description: prizeDescription,
-      pointCost: pointCost,
-      pointType: pointTypeId,
-      enabled: true,
-      online: true,
-      location: false,
-      imageUrl: imageUrl,
-      // Derived fields for compatibility
-      isActive: true,
-      currentRedemptions: 0
-    };
+      logger.info('Campaign TLP setup completed successfully', {
+        campaignId: campaign.id,
+        totalArtifacts: artifacts.length,
+        successfulArtifacts: artifacts.filter(a => a.status === 'SUCCESS').length
+      })
 
-    return this.createOffer(offer);
-  }
+      return artifacts
+    } catch (error: any) {
+      logger.error('Campaign TLP setup failed', {
+        campaignId: campaign.id,
+        error: error.message,
+        artifactsCreated: artifacts.length
+      })
 
-  async allocatePointsToMember(
-    memberId: string,
-    pointTypeId: string,
-    points: number,
-    description: string,
-    metadata?: Record<string, any>
-  ): Promise<TLPTransaction> {
-    const transaction: TLPTransaction = {
-      memberId,
-      pointType: pointTypeId,
-      points,
-      transactionType: 'ACCRUAL',
-      description,
-      metadata
-    };
-
-    return this.accruePoints(transaction);
+      return artifacts
+    }
   }
 }
 
-export const tlpService = new TLPService(); 
+export default TLPService 

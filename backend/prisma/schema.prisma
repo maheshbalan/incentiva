@@ -31,55 +31,53 @@ model User {
 }
 
 model Campaign {
-  id                      String   @id @default(cuid())
-  name                    String
-  description             String?
-  startDate               DateTime
-  endDate                 DateTime
-  status                  CampaignStatus @default(DRAFT)
-  
-  // Campaign Goals
-  individualGoal          Decimal? @db.Decimal(15, 2)
-  overallGoal             Decimal? @db.Decimal(15, 2)
-  campaignCurrency        String   @default("MXN") // Single currency for the campaign
-  amountPerPoint          Decimal? @db.Decimal(15, 2) // Amount to sell to get one point
-  totalPointsMinted       Decimal? @db.Decimal(15, 2) // Total points minted for the campaign
-  individualGoalBonus     Decimal? @db.Decimal(15, 2) // Bonus points for individual goal achievement
-  overallGoalBonus        Decimal? @db.Decimal(15, 2) // Bonus points for overall goal achievement
-  rewards                 String? // Rewards description
-  
-  // TLP Configuration
-  tlpApiKey               String?
-  tlpEndpointUrl          String?
-  backendConnectionConfig  Json?
-  
-  // Campaign Rules
-  eligibilityCriteria     String? // Natural language eligibility description
-  
-  // Database Connection (stored in backendConnectionConfig as JSON)
-  // These fields are computed from backendConnectionConfig for easier access
-  databaseType            String? // Type of database (postgres, mysql, etc.)
-  databaseHost            String? // Database host
-  databasePort            Int?    // Database port
-  databaseName            String? // Database name
-  databaseUsername        String? // Database username
-  databasePassword        String? // Database password (encrypted)
-  
-  createdById             String
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  id                        String   @id @default(cuid())
+  name                      String
+  description               String?
+  startDate                 DateTime
+  endDate                   DateTime
+  status                    CampaignStatus @default(DRAFT)
+  individualGoal            Decimal? @db.Decimal(15, 2)
+  overallGoal               Decimal? @db.Decimal(15, 2)
+  campaignCurrency          String   @default("MXN") // Single currency for the campaign
+  amountPerPoint            Decimal? @db.Decimal(15, 2) // Amount to sell to get one point
+  totalPointsMinted         Decimal? @db.Decimal(15, 2) // Total points minted for the campaign
+  individualGoalBonus       Decimal? @db.Decimal(15, 2) // Bonus points for individual goal achievement
+  overallGoalBonus          Decimal? @db.Decimal(15, 2) // Bonus points for overall goal achievement
+  rewards                   String? // Rewards description
 
-  // Relations
-  createdBy               User     @relation("CampaignCreator", fields: [createdById], references: [id])
-  rules                   CampaignRule[]
-  executions              CampaignExecution[]
-  schemas                 CampaignSchema[]
-  userCampaigns           UserCampaign[]
-  redemptions             CampaignRedemption[]
-  goals                   CampaignGoal[]
-  transactions            CampaignTransaction[]
-  rulesEngineJobs        RulesEngineJob[]
-  rulesEngineExecutions  RulesEngineExecution[]
+  // TLP Configuration
+  tlpApiKey                 String?
+  tlpEndpointUrl            String?
+
+  // Campaign Rules
+  eligibilityCriteria       String? // Natural language eligibility description
+  rules                     CampaignRule[]
+  
+  // Generated Artifacts
+  transactionSchema         String? // JSON schema for transactions
+  jsonRules                 String? // Executable JSON rules
+  dataExtractionQueries     String? // SQL queries for data extraction
+
+  // Database Connection (stored in backendConnectionConfig as JSON)
+  databaseType              String? // Type of database (postgres, mysql, etc.)
+  databaseHost              String? // Database host
+  databasePort              Int?    // Database port
+  databaseName              String? // Database name
+  databaseUsername          String? // Database username
+  databasePassword          String? // Database password (encrypted)
+
+  // Execution Tracking
+  lastExecutedAt            DateTime?
+  executionLogs             CampaignExecutionLog[]
+  tlpArtifacts              TLPArtifact[]
+
+  // Relationships
+  createdBy                 User     @relation("CampaignCreator", fields: [createdById], references: [id])
+  createdById               String
+  participants              CampaignParticipant[]
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 
   @@map("campaigns")
 }
@@ -102,17 +100,14 @@ model CampaignGoal {
 }
 
 model CampaignRule {
-  id                      String   @id @default(cuid())
-  campaignId              String
-  ruleType                RuleType
-  ruleDefinition          Json
-  generatedCode           String?
-  schemaUnderstandingScore Decimal? @db.Decimal(3, 2)
-  schemaFeedback          String?
-  createdAt               DateTime @default(now())
-
-  // Relations
-  campaign                Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  id                String   @id @default(cuid())
+  campaignId        String
+  ruleType          RuleType
+  ruleDefinition    Json
+  status            RuleStatus @default(DRAFT)
+  campaign          Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@map("campaign_rules")
 }
@@ -400,4 +395,38 @@ enum RulesEngineExecutionStatus {
   COMPLETED
   FAILED
   CANCELLED
+} 
+
+// New models for advanced campaign execution
+
+model TLPArtifact {
+  id              String   @id @default(cuid())
+  campaignId      String
+  artifactType   String   // POINT_TYPE, POINT_ISSUE, ACCRUAL_OFFER, REDEMPTION_OFFER, MEMBER
+  artifactName   String
+  apiCall        String   // The API call that was made
+  response       String   // The response from TLP
+  status         String   // SUCCESS, FAILED, PENDING
+  errorDetails   String?  // Error details if failed
+  createdAt      DateTime @default(now())
+  
+  // Relationships
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  @@map("tlp_artifacts")
+}
+
+model CampaignExecutionLog {
+  id              String   @id @default(cuid())
+  campaignId      String
+  executedBy      String   // User ID who executed the campaign
+  executionData   String   // JSON string of execution details
+  success         Boolean
+  executionTime   Int      // Execution time in milliseconds
+  createdAt       DateTime @default(now())
+  
+  // Relationships
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  @@map("campaign_execution_logs")
 } 

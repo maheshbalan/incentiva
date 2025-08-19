@@ -9,10 +9,11 @@ import path from 'path';
 import { PrismaClient } from '@prisma/client';
 
 // Import routes
-import authRoutes from './controllers/authController';
-import campaignRoutes from './controllers/campaignController';
-import participantRoutes from './controllers/participantController';
-import tlpRoutes from './controllers/tlpController';
+import authController from './controllers/authController';
+import campaignController from './controllers/campaignController';
+import participantController from './controllers/participantController';
+import tlpController from './controllers/tlpController';
+import campaignExecutionController from './controllers/campaignExecutionController';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -69,10 +70,11 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/campaigns', campaignRoutes);
-app.use('/api/participants', participantRoutes);
-app.use('/api/tlp', tlpRoutes);
+app.use('/api/auth', authController);
+app.use('/api/campaigns', campaignController);
+app.use('/api/participants', participantController);
+app.use('/api/tlp', tlpController);
+app.use('/api/campaign-execution', campaignExecutionController);
 
 // WebSocket connection handling
 io.on('connection', (socket) => {
