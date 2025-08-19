@@ -2,8 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import { prisma } from '../index';
-import { UserRole } from '@prisma/client';
 import { createError } from './errorHandler';
+
+type Role = 'ADMIN' | 'PARTICIPANT';
 
 // Define a User interface that matches our Prisma schema
 interface PrismaUser {
@@ -12,7 +13,7 @@ interface PrismaUser {
   passwordHash: string | null;
   firstName: string | null;
   lastName: string | null;
-  role: UserRole;
+  role: Role;
   oauthProvider: string | null;
   oauthId: string | null;
   createdAt: Date;
@@ -67,7 +68,7 @@ export const authenticateJWT = async (
   }
 };
 
-export const requireRole = (roles: UserRole[]) => {
+export const requireRole = (roles: Role[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const authReq = req as AuthenticatedRequest;
     
@@ -79,7 +80,7 @@ export const requireRole = (roles: UserRole[]) => {
       return;
     }
 
-    if (!roles.includes(authReq.user.role)) {
+    if (!roles.includes(authReq.user.role as Role)) {
       res.status(403).json({
         success: false,
         error: 'Insufficient permissions'
@@ -91,9 +92,9 @@ export const requireRole = (roles: UserRole[]) => {
   };
 };
 
-export const requireAdmin = requireRole([UserRole.ADMIN]);
-export const requireParticipant = requireRole([UserRole.PARTICIPANT]);
-export const requireAnyRole = requireRole([UserRole.ADMIN, UserRole.PARTICIPANT]);
+export const requireAdmin = requireRole(['ADMIN']);
+export const requireParticipant = requireRole(['PARTICIPANT']);
+export const requireAnyRole = requireRole(['ADMIN', 'PARTICIPANT']);
 
 // OAuth middleware
 export const authenticateGoogle = passport.authenticate('google', {

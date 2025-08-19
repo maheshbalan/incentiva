@@ -48,6 +48,7 @@ import {
 } from '@mui/icons-material'
 import { useAuth } from '../hooks/useAuth'
 import { AIProvider } from '@incentiva/shared'
+import { authService } from '../services/authService'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -107,6 +108,7 @@ const AdminPage: React.FC = () => {
   const [openUserDialog, setOpenUserDialog] = useState(false)
   const [openAIDialog, setOpenAIDialog] = useState(false)
   const [openParticipantDialog, setOpenParticipantDialog] = useState(false)
+  const [selectedParticipantUsers, setSelectedParticipantUsers] = useState<User[]>([])
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [editingAI, setEditingAI] = useState<AIModelConfig | null>(null)
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
@@ -140,22 +142,9 @@ const AdminPage: React.FC = () => {
     setCampaignError(null)
     
     try {
-      const response = await fetch('/api/campaigns', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-      
-      const result = await response.json()
-      if (result.success && result.data) {
-        setCampaigns(result.data)
-      } else {
-        throw new Error(result.error || 'Failed to fetch campaigns')
-      }
+      const { data } = await authService.api.get('/campaigns')
+      if (data.success && data.data) setCampaigns(data.data)
+      else throw new Error(data.error || 'Failed to fetch campaigns')
     } catch (error) {
       console.error('Error fetching campaigns:', error)
       setCampaignError(error instanceof Error ? error.message : 'Failed to fetch campaigns')
@@ -170,22 +159,9 @@ const AdminPage: React.FC = () => {
     setUserError(null)
     
     try {
-      const response = await fetch('/api/auth/users', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-      
-      const result = await response.json()
-      if (result.success && result.data) {
-        setUsers(result.data)
-      } else {
-        throw new Error(result.error || 'Failed to fetch users')
-      }
+      const { data } = await authService.api.get('/auth/users')
+      if (data.success && data.data) setUsers(data.data)
+      else throw new Error(data.error || 'Failed to fetch users')
     } catch (error) {
       console.error('Error fetching users:', error)
       setUserError(error instanceof Error ? error.message : 'Failed to fetch users')
@@ -203,25 +179,17 @@ const AdminPage: React.FC = () => {
   // Campaign execution
   const handleExecuteCampaign = async (campaign: Campaign) => {
     try {
-      const response = await fetch(`/api/campaigns/${campaign.id}/execute`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      })
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      if (campaign.status !== 'APPROVED') {
+        const confirmApprove = confirm('Campaign must be APPROVED before execution. Approve now?')
+        if (!confirmApprove) return
+        await authService.api.patch(`/campaigns/${campaign.id}/status`, { status: 'APPROVED' })
       }
-      
-      const result = await response.json()
-      if (result.success) {
+      const { data } = await authService.api.post(`/campaigns/${campaign.id}/execute`)
+      if (data.success) {
         alert(`Campaign "${campaign.name}" execution started successfully!`)
-        // Refresh campaigns to show updated status
         fetchCampaigns()
       } else {
-        throw new Error(result.error || 'Failed to execute campaign')
+        throw new Error(data.error || 'Failed to execute campaign')
       }
     } catch (error) {
       console.error('Error executing campaign:', error)
@@ -364,13 +332,22 @@ const AdminPage: React.FC = () => {
   // Participant Management
   const handleManageParticipants = (campaign: Campaign) => {
     setSelectedCampaign(campaign)
+    setSelectedParticipantUsers([])
     setOpenParticipantDialog(true)
   }
 
-  const handleAddParticipants = (campaignId: string, userIds: string[]) => {
-    // In real app, this would add participants to the campaign
-    console.log(`Adding participants ${userIds} to campaign ${campaignId}`)
-    setOpenParticipantDialog(false)
+  const handleAddParticipants = async (campaignId: string) => {
+    try {
+      for (const u of selectedParticipantUsers) {
+        await authService.api.post(`/campaigns/${campaignId}/participants`, { userId: u.id })
+      }
+      alert('Participants added successfully')
+      setOpenParticipantDialog(false)
+      fetchCampaigns()
+    } catch (err) {
+      console.error('Failed to add participants', err)
+      alert('Failed to add participants')
+    }
   }
 
   const getRoleIcon = (role: string) => {
@@ -877,6 +854,8 @@ const AdminPage: React.FC = () => {
                   placeholder="Choose users..."
                 />
               )}
+              value={selectedParticipantUsers}
+              onChange={(_, value) => setSelectedParticipantUsers(value)}
               renderOption={(props, option) => (
                 <li {...props}>
                   <Box>
@@ -901,7 +880,7 @@ const AdminPage: React.FC = () => {
           </Button>
           <Button 
             variant="contained"
-            onClick={() => selectedCampaign && handleAddParticipants(selectedCampaign.id, [])}
+            onClick={() => selectedCampaign && handleAddParticipants(selectedCampaign.id)}
             sx={{ 
               background: 'linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%)',
               '&:hover': {

@@ -23,6 +23,10 @@ const tlpService = new TLPService({
 // Create new campaign
 router.post('/', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    logger.info('Create campaign request received', {
+      userId: req.user?.id,
+      requestBody: JSON.stringify(req.body, null, 2)
+    })
     const {
       name,
       description,
@@ -73,14 +77,18 @@ router.post('/', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest
       }
     });
 
-    logger.info('Campaign created', { campaignId: campaign.id, name: campaign.name });
+    logger.info('Campaign created', { campaignId: campaign.id, name: campaign.name, createdById: req.user.id });
 
     res.status(201).json({
       success: true,
       data: campaign
     });
   } catch (error) {
-    logger.error('Campaign creation failed:', error);
+    logger.error('Campaign creation failed:', {
+      error: (error as any).message,
+      stack: (error as any).stack,
+      requestBody: req.body
+    });
     res.status(500).json({
       success: false,
       error: 'Failed to create campaign'
@@ -109,6 +117,12 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
         }
       };
     }
+
+    logger.info('Campaign list query parameters', {
+      userId: req.user?.id,
+      role: req.user?.role,
+      where
+    })
 
     const campaigns = await prisma.campaign.findMany({
       where,
@@ -146,7 +160,10 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
       }
     });
   } catch (error) {
-    logger.error('Campaign list failed:', error);
+    logger.error('Campaign list failed:', {
+      error: (error as any).message,
+      stack: (error as any).stack
+    });
     res.status(500).json({
       success: false,
       error: 'Failed to list campaigns'
@@ -263,19 +280,90 @@ router.put('/:id', authenticateJWT, requireAdmin, async (req: AuthenticatedReque
       requestHeaders: req.headers
     });
 
-    // Filter out old fields that no longer exist in the schema
+    // Remove non-updatable/unknown fields and coerce types
     const {
+      // legacy fields
       individualGoalCurrency,
       overallGoalCurrency,
-      ...cleanUpdateData
-    } = updateData;
+      // non-updatable / relational / server-managed
+      id: _omitId,
+      createdAt: _omitCreatedAt,
+      updatedAt: _omitUpdatedAt,
+      createdBy: _omitCreatedBy,
+      createdById: _omitCreatedById,
+      rules: _omitRules,
+      userCampaigns: _omitUserCampaigns,
+      executions: _omitExecutions,
+      executionLogs: _omitExecutionLogs,
+      schemas: _omitSchemas,
+      redemptions: _omitRedemptions,
+      goals: _omitGoals,
+      transactions: _omitTransactions,
+      rulesEngineJobs: _omitRulesEngineJobs,
+      rulesEngineExecutions: _omitRulesEngineExecutions,
+      tlpArtifacts: _omitTlpArtifacts,
+      _count: _omitCount,
+      // everything else
+      ...rest
+    } = updateData as any
+
+    const cleanUpdateData: any = {}
+
+    // Whitelist of updatable scalar fields
+    const assignIfDefined = (key: string, value: any) => {
+      if (value !== undefined) cleanUpdateData[key] = value
+    }
+
+    // Strings
+    assignIfDefined('name', rest.name)
+    assignIfDefined('description', rest.description)
+    assignIfDefined('campaignCurrency', rest.campaignCurrency)
+    assignIfDefined('eligibilityCriteria', rest.eligibilityCriteria)
+    assignIfDefined('tlpApiKey', rest.tlpApiKey)
+    assignIfDefined('tlpEndpointUrl', rest.tlpEndpointUrl)
+    assignIfDefined('databaseType', rest.databaseType)
+    assignIfDefined('databaseHost', rest.databaseHost)
+    assignIfDefined('databaseName', rest.databaseName)
+    assignIfDefined('databaseUsername', rest.databaseUsername)
+    assignIfDefined('databasePassword', rest.databasePassword)
+    assignIfDefined('rewards', rest.rewards)
+    assignIfDefined('status', rest.status)
+
+    // Dates
+    if (rest.startDate) cleanUpdateData.startDate = new Date(rest.startDate)
+    if (rest.endDate) cleanUpdateData.endDate = new Date(rest.endDate)
+
+    // Numbers (coerce)
+    if (rest.individualGoal !== undefined && rest.individualGoal !== null)
+      cleanUpdateData.individualGoal = Number(rest.individualGoal)
+    if (rest.overallGoal !== undefined && rest.overallGoal !== null)
+      cleanUpdateData.overallGoal = Number(rest.overallGoal)
+    if (rest.totalPointsMinted !== undefined && rest.totalPointsMinted !== null)
+      cleanUpdateData.totalPointsMinted = Number(rest.totalPointsMinted)
+    if (rest.amountPerPoint !== undefined && rest.amountPerPoint !== null)
+      cleanUpdateData.amountPerPoint = Number(rest.amountPerPoint)
+    if (rest.individualGoalBonus !== undefined && rest.individualGoalBonus !== null)
+      cleanUpdateData.individualGoalBonus = Number(rest.individualGoalBonus)
+    if (rest.overallGoalBonus !== undefined && rest.overallGoalBonus !== null)
+      cleanUpdateData.overallGoalBonus = Number(rest.overallGoalBonus)
+    if (rest.databasePort !== undefined && rest.databasePort !== null)
+      cleanUpdateData.databasePort = Number(rest.databasePort)
+
+    // JSON fields
+    if (rest.transactionSchema !== undefined)
+      cleanUpdateData.transactionSchema = typeof rest.transactionSchema === 'string' ? rest.transactionSchema : JSON.stringify(rest.transactionSchema)
+    if (rest.jsonRules !== undefined)
+      cleanUpdateData.jsonRules = typeof rest.jsonRules === 'string' ? rest.jsonRules : JSON.stringify(rest.jsonRules)
+    if (rest.dataExtractionQueries !== undefined)
+      cleanUpdateData.dataExtractionQueries = typeof rest.dataExtractionQueries === 'string' ? rest.dataExtractionQueries : JSON.stringify(rest.dataExtractionQueries)
 
     logger.info('Cleaned update data', { 
       campaignId: id, 
       originalData: Object.keys(req.body),
       cleanedData: Object.keys(cleanUpdateData),
       individualGoalCurrency,
-      overallGoalCurrency
+      overallGoalCurrency,
+      createdById: _omitCreatedById ? 'FILTERED_OUT' : 'NOT_PRESENT'
     });
 
     // Map old fields to new ones if they exist

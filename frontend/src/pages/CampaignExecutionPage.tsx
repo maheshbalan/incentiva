@@ -115,25 +115,28 @@ const CampaignExecutionPage: React.FC = () => {
   }, [id])
 
   const fetchCampaign = async () => {
-          try {
-        setLoading(true)
-        const response = await authService.api.get(`/campaigns/${id}`)
-        setCampaign(response.data.data)
-      } catch (err: any) {
-        console.error('Error fetching campaign:', err)
-        if (err.response?.status === 401) {
-          // Token expired or invalid, redirect to login
-          window.location.href = '/login'
-          return
-        }
-        setError(err.message || 'Failed to fetch campaign')
-      } finally {
-        setLoading(false)
+    try {
+      console.debug('[CampaignExecutionPage] Fetching campaign', { id })
+      setLoading(true)
+      const response = await authService.api.get(`/campaigns/${id}`)
+      console.debug('[CampaignExecutionPage] Fetch response', response.status, response.data)
+      setCampaign(response.data.campaign || response.data.data)
+    } catch (err: any) {
+      console.error('[CampaignExecutionPage] Error fetching campaign:', err?.response?.status, err?.response?.data || err)
+      if (err.response?.status === 401) {
+        // Token expired or invalid, redirect to login
+        window.location.href = '/login'
+        return
       }
+      setError(err.message || 'Failed to fetch campaign')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const executeCampaign = async () => {
     try {
+      console.debug('[CampaignExecutionPage] Execute campaign start', { id })
       setExecuting(true)
       setError(null)
       setCurrentStep(0)
@@ -166,6 +169,7 @@ const CampaignExecutionPage: React.FC = () => {
       await updateCampaignStatus(CampaignStatus.ACTIVE)
 
     } catch (err) {
+      console.error('[CampaignExecutionPage] Execute campaign failed', err)
       setError(err instanceof Error ? err.message : 'Campaign execution failed')
     } finally {
       setExecuting(false)

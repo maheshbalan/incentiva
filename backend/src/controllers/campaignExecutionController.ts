@@ -67,11 +67,9 @@ router.post('/execute', authenticateJWT, requireAdmin, async (req: Authenticated
     const campaign = await prisma.campaign.findUnique({
       where: { id: campaignId },
       include: {
-        participants: {
-          include: {
-            user: true
-          }
-        }
+        participants: { include: { user: true } },
+        tlpArtifacts: true,
+        executionLogs: true
       }
     })
 

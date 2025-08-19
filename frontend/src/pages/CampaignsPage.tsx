@@ -53,10 +53,12 @@ const CampaignsPage: React.FC = () => {
     try {
       setLoading(true)
       // Use authenticated axios instance from authService
+      console.debug('[CampaignsPage] Fetching campaigns...')
       const response = await authService.api.get('/campaigns')
+      console.debug('[CampaignsPage] Campaigns response', response.status, response.data)
       setCampaigns(response.data.data || [])
     } catch (err: any) {
-      console.error('Error fetching campaigns:', err)
+      console.error('[CampaignsPage] Error fetching campaigns:', err?.response?.status, err?.response?.data || err)
       if (err.response?.status === 401) {
         // Token expired or invalid, redirect to login
         window.location.href = '/login'

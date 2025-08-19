@@ -50,6 +50,7 @@ const CampaignEditPage: React.FC = () => {
 
   const fetchCampaign = async () => {
     try {
+      console.debug('[CampaignEditPage] Fetching campaign', { id })
       const token = localStorage.getItem('token')
       if (!token) {
         navigate('/login')
@@ -58,6 +59,7 @@ const CampaignEditPage: React.FC = () => {
 
       // Use the authenticated axios instance from authService
       const response = await authService.api.get(`/campaigns/${id}`)
+      console.debug('[CampaignEditPage] Fetch response', response.status, response.data)
       
       if (response.data.success) {
         setCampaign(response.data.campaign)
@@ -65,7 +67,7 @@ const CampaignEditPage: React.FC = () => {
         throw new Error(response.data.error || 'Failed to fetch campaign')
       }
     } catch (err: any) {
-      console.error('Error fetching campaign:', err)
+      console.error('[CampaignEditPage] Error fetching campaign:', err?.response?.status, err?.response?.data || err)
       if (err.response?.status === 401) {
         // Token expired or invalid, redirect to login
         navigate('/login')
@@ -82,6 +84,7 @@ const CampaignEditPage: React.FC = () => {
 
     setSaving(true)
     try {
+      console.debug('[CampaignEditPage] Saving campaign', { id, payload: campaign })
       const token = localStorage.getItem('token')
       if (!token) {
         navigate('/login')
@@ -90,6 +93,7 @@ const CampaignEditPage: React.FC = () => {
 
       // Use the authenticated axios instance from authService
       const response = await authService.api.put(`/campaigns/${id}`, campaign)
+      console.debug('[CampaignEditPage] Save response', response.status, response.data)
       
       if (response.data.success) {
         navigate('/campaigns')
@@ -97,7 +101,7 @@ const CampaignEditPage: React.FC = () => {
         throw new Error(response.data.error || 'Failed to update campaign')
       }
     } catch (err: any) {
-      console.error('Error updating campaign:', err)
+      console.error('[CampaignEditPage] Error updating campaign:', err?.response?.status, err?.response?.data || err)
       if (err.response?.status === 401) {
         // Token expired or invalid, redirect to login
         navigate('/login')
