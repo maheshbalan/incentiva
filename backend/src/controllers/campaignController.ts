@@ -376,14 +376,14 @@ router.post('/:id/schema', authenticateJWT, requireAdmin, async (req: Authentica
       data: {
         campaignId: id,
         schemaDefinition,
-        understandingScore: analysis.understandingScore,
-        feedbackText: analysis.feedback
+        understandingScore: null, // Will be calculated later
+        feedbackText: null // Will be provided later
       }
     });
 
     logger.info('Schema uploaded and analyzed', { 
       campaignId: id, 
-      understandingScore: analysis.understandingScore 
+      schemaId: schema.id
     });
 
     res.json({
@@ -445,7 +445,7 @@ router.post('/:id/rules', authenticateJWT, requireAdmin, async (req: Authenticat
     }
 
     // Generate rules using AI
-    const rules = await aiService.generateJSONRules(requirements, {
+    const rulesResult = await aiService.generateJSONRules(requirements, {
       tables: [],
       relationships: [],
       understandingScore: Number(latestSchema.understandingScore) || 0,
@@ -453,21 +453,28 @@ router.post('/:id/rules', authenticateJWT, requireAdmin, async (req: Authenticat
       requiredFields: []
     });
 
+    if (!rulesResult.success || !rulesResult.data) {
+      throw new Error(rulesResult.error || 'Failed to generate rules');
+    }
+
+    // Parse the generated rules from the AI response
+    const rules = JSON.parse(rulesResult.data);
+
     // Save generated rules
     const savedRules = await Promise.all(
-      (rules.rules?.goalRules || []).map(goal => 
+      (rules.goalRules || []).map(goal => 
         prisma.campaignRule.create({
-                  data: {
-          campaignId: id,
-          ruleType: RuleType.GOAL,
-          ruleDefinition: JSON.stringify(goal)
-        }
+          data: {
+            campaignId: id,
+            ruleType: RuleType.GOAL,
+            ruleDefinition: JSON.stringify(goal)
+          }
         })
       )
     );
 
     await Promise.all(
-      (rules.rules?.eligibilityRules || []).map(eligibility =>
+      (rules.eligibilityRules || []).map(eligibility =>
         prisma.campaignRule.create({
           data: {
             campaignId: id,
@@ -479,7 +486,7 @@ router.post('/:id/rules', authenticateJWT, requireAdmin, async (req: Authenticat
     );
 
     await Promise.all(
-      (rules.rules?.prizeRules || []).map(prize =>
+      (rules.prizeRules || []).map(prize =>
         prisma.campaignRule.create({
           data: {
             campaignId: id,
@@ -492,8 +499,8 @@ router.post('/:id/rules', authenticateJWT, requireAdmin, async (req: Authenticat
 
     logger.info('Rules generated', { 
       campaignId: id, 
-      goalsCount: rules.rules?.goalRules?.length || 0,
-      prizesCount: rules.rules?.prizeRules?.length || 0
+      goalsCount: rules.goalRules?.length || 0,
+      prizesCount: rules.prizeRules?.length || 0
     });
 
     res.json({

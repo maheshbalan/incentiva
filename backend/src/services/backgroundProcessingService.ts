@@ -51,10 +51,10 @@ export class BackgroundProcessingService {
       this.isRunning = true
 
       // Start data extraction
-      await this.startDataExtraction(campaignId)
+      await this.executeOneTimeDataExtraction(campaignId)
 
       // Start transaction processing
-      await this.startTransactionProcessing(campaignId)
+      await this.processTransactions(campaignId)
 
       logger.info('Background processing started successfully', { campaignId })
     } catch (error: any) {
@@ -521,11 +521,11 @@ export class BackgroundProcessingService {
     try {
       for (const row of rows) {
         // Apply field mappings if specified
-        let transactionData = row
+        let transactionData: any = row
         if (transformation?.fieldMappings) {
-          transactionData = {}
+          transactionData = {} as any
           for (const [sourceField, targetField] of Object.entries(transformation.fieldMappings)) {
-            transactionData[targetField] = row[sourceField]
+            transactionData[targetField] = (row as any)[sourceField]
           }
         }
 

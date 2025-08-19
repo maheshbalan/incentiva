@@ -1,10 +1,16 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../index';
 import { authenticateJWT, AuthenticatedRequest } from '../middleware/auth';
-import { tlpService } from '../services/tlpService';
+import TLPService from '../services/tlpService';
 import { logger } from '../utils/logger';
 
 const router = Router();
+
+// Initialize TLP service
+const tlpService = new TLPService({
+  apiKey: process.env.TLP_DEFAULT_API_KEY || '',
+  endpointUrl: process.env.TLP_DEFAULT_ENDPOINT || ''
+});
 
 // Get user's campaigns
 router.get('/campaigns', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {

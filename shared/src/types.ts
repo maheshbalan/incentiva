@@ -664,6 +664,44 @@ export interface CampaignExecutionResult {
 }
 
 // ============================================================================
+// TLP INTEGRATION TYPES
+// ============================================================================
+
+export interface TLPMember {
+  id: string
+  externalId: string
+  email: string
+  firstName: string
+  lastName: string
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface TLPAccrualOffer {
+  id: string
+  name: string
+  description: string
+  pointTypeId: string
+  accrualRules: any
+  status: 'ACTIVE' | 'INACTIVE' | 'DRAFT'
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface TLPArtifact {
+  id: string
+  campaignId: string
+  artifactType: 'POINT_TYPE' | 'POINT_ISSUE' | 'ACCRUAL_OFFER' | 'REDEMPTION_OFFER' | 'MEMBER'
+  artifactName: string
+  apiCall: string
+  response: string
+  status: 'SUCCESS' | 'FAILED' | 'PENDING'
+  errorDetails?: string
+  createdAt: Date
+}
+
+// ============================================================================
 // API RESPONSE TYPES
 // ============================================================================
 
