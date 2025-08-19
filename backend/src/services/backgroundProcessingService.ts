@@ -146,7 +146,8 @@ export class BackgroundProcessingService {
           ...job,
           status: 'COMPLETED',
           completedAt: new Date(),
-          extractedRows
+          extractedRows,
+          lastProcessedTimestamp: new Date().toISOString()
         }
 
       } finally {
@@ -167,7 +168,7 @@ export class BackgroundProcessingService {
         data: {
           status: 'FAILED',
           completedAt: new Date(),
-          error: error.message
+          errorMessage: error.message
         }
       })
 
