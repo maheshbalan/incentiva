@@ -612,13 +612,17 @@ const AdminPage: React.FC = () => {
                             Manage Participants
                           </Button>
                           {campaign.status === 'DRAFT' && (
-                            <IconButton
+                            <Button
+                              variant="contained"
+                              size="small"
+                              startIcon={<PlayArrow />}
                               onClick={() => handleExecuteCampaign(campaign)}
                               color="success"
                               title="Execute Campaign"
+                              sx={{ ml: 1 }}
                             >
-                              <PlayArrow />
-                            </IconButton>
+                              Execute Campaign
+                            </Button>
                           )}
                         </TableCell>
                       </TableRow>

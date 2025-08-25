@@ -531,6 +531,13 @@ WHERE t.transaction_date > (SELECT MAX(transaction_date) FROM campaign_transacti
                           <Button size="small" variant="outlined" onClick={() => {
                             console.log('[CampaignExecutionPage] View clicked for step', idx, 'setting activeTab to', idx)
                             setActiveTab(idx)
+                            // Scroll to tabs section
+                            setTimeout(() => {
+                              const tabsSection = document.querySelector('[data-tabs-section]')
+                              if (tabsSection) {
+                                tabsSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                              }
+                            }, 100)
                           }} sx={{ mr: 1 }}>
                             View
                           </Button>
@@ -606,12 +613,30 @@ WHERE t.transaction_date > (SELECT MAX(transaction_date) FROM campaign_transacti
       </Grid>
 
       {/* Tabs for sections */}
-      <Card sx={{ mt: 3 }}>
+      <Card sx={{ mt: 3 }} data-tabs-section>
         <CardContent>
           <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-            Debug: Current activeTab = {activeTab}
+            Debug: Current activeTab = {activeTab} | Tab {activeTab + 1} of 6
           </Typography>
-          <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Active Tab: {['TLP Artifacts', 'Transaction Schema', 'SQL Artifacts', 'JSON Rules', 'Scheduling', 'Transactions & Processing'][activeTab]}
+          </Alert>
+          <Tabs 
+            value={activeTab} 
+            onChange={(_, v) => {
+              console.log('[CampaignExecutionPage] Tab changed from', activeTab, 'to', v)
+              setActiveTab(v)
+            }}
+            sx={{ 
+              borderBottom: 1, 
+              borderColor: 'divider',
+              backgroundColor: 'background.paper',
+              '& .MuiTab-root': {
+                minWidth: 120,
+                fontWeight: 'medium'
+              }
+            }}
+          >
             <Tab label="TLP Artifacts" />
             <Tab label="Transaction Schema" />
             <Tab label="SQL Artifacts" />

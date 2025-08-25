@@ -16,9 +16,22 @@ import {
   Paper,
   IconButton,
   Tooltip,
-  Alert
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  Checkbox,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material'
-import { Add, Visibility, Edit, PlayArrow, People, Receipt } from '@mui/icons-material'
+import { Add, Visibility, Edit, PlayArrow, People, Receipt, Close } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import { CampaignStatus } from '@incentiva/shared'
 import { useAuth } from '../hooks/useAuth'
@@ -42,6 +55,14 @@ const CampaignsPage: React.FC = () => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Manage Participants dialog state
+  const [openParticipantDialog, setOpenParticipantDialog] = useState(false)
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
+  const [selectedParticipantUsers, setSelectedParticipantUsers] = useState<any[]>([])
+  const [currentParticipants, setCurrentParticipants] = useState<any[]>([])
+  const [availableUsers, setAvailableUsers] = useState<any[]>([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -98,6 +119,55 @@ const CampaignsPage: React.FC = () => {
       currency: 'MXN'
     }).format(amount)
   }
+
+  // Manage Participants functions
+  const handleManageParticipants = (campaign: Campaign) => {
+    setSelectedCampaign(campaign)
+    setSelectedParticipantUsers([])
+    // Load existing participants for this campaign
+    authService.api
+      .get(`/campaigns/${campaign.id}/participants`)
+      .then(({ data }) => {
+        const users = (data?.data || []).map((uc: any) => uc.user)
+        setCurrentParticipants(users)
+      })
+      .catch((err) => {
+        console.error('Failed to load campaign participants', err)
+        setCurrentParticipants([])
+      })
+      .finally(() => setOpenParticipantDialog(true))
+  }
+
+  const handleAddParticipants = async (campaignId: string) => {
+    try {
+      for (const u of selectedParticipantUsers) {
+        await authService.api.post(`/campaigns/${campaignId}/participants`, { userId: u.id })
+      }
+      // Refresh participants list and campaign counters
+      const { data } = await authService.api.get(`/campaigns/${campaignId}/participants`)
+      const users = (data?.data || []).map((uc: any) => uc.user)
+      setCurrentParticipants(users)
+      setSelectedParticipantUsers([])
+      alert('Participants added successfully')
+      fetchCampaigns()
+    } catch (err) {
+      console.error('Failed to add participants', err)
+      alert('Failed to add participants')
+    }
+  }
+
+  const handleRemoveParticipant = async (campaignId: string, userId: string) => {
+    try {
+      await authService.api.delete(`/campaigns/${campaignId}/participants/${userId}`)
+      const { data } = await authService.api.get(`/campaigns/${campaignId}/participants`)
+      const users = (data?.data || []).map((uc: any) => uc.user)
+      setCurrentParticipants(users)
+      fetchCampaigns()
+    } catch (err) {
+      console.error('Failed to remove participant', err)
+      alert('Failed to remove participant')
+    }
+    }
 
   // Show loading while auth is initializing
   if (authLoading) {
@@ -251,7 +321,7 @@ const CampaignsPage: React.FC = () => {
                       <Tooltip title="Manage Participants">
                         <IconButton
                           size="small"
-                          onClick={() => navigate(`/campaigns/${campaign.id}/participants`)}
+                          onClick={() => handleManageParticipants(campaign)}
                         >
                           <People />
                         </IconButton>
@@ -272,6 +342,56 @@ const CampaignsPage: React.FC = () => {
           </Table>
         </TableContainer>
       )}
+
+      {/* Manage Participants Dialog */}
+      <Dialog 
+        open={openParticipantDialog} 
+        onClose={() => setOpenParticipantDialog(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6">
+              Manage Participants - {selectedCampaign?.name}
+            </Typography>
+            <IconButton onClick={() => setOpenParticipantDialog(false)}>
+              <Close />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle1" gutterBottom>Current Participants</Typography>
+            {currentParticipants.length === 0 ? (
+              <Typography color="text.secondary">No participants yet</Typography>
+            ) : (
+              <List>
+                {currentParticipants.map((participant) => (
+                  <ListItem key={participant.id}>
+                    <ListItemText
+                      primary={`${participant.firstName || ''} ${participant.lastName || ''}`}
+                      secondary={participant.email}
+                    />
+                    <ListItemSecondaryAction>
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => handleRemoveParticipant(selectedCampaign!.id, participant.id)}
+                      >
+                        Remove
+                      </Button>
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenParticipantDialog(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }
