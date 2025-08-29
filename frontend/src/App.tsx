@@ -44,18 +44,20 @@ function App() {
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/campaigns" element={<CampaignsPage />} />
-        <Route path="/campaigns/create" element={<CreateCampaignPage />} />
-        <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
-        <Route path="/campaigns/:id/edit" element={<CampaignEditPage />} />
-        <Route path="/campaigns/:id/participants" element={<AdminPage />} />
-        <Route path="/campaigns/:id/execute" element={<CampaignExecutionPage />} />
-        <Route path="/campaigns/:id/transactions" element={<TransactionTablePage />} />
+        <Route path="/" element={<Navigate to={user?.role === 'ADMIN' ? '/dashboard' : '/participant/campaigns'} replace />} />
+        <Route path="/dashboard" element={user?.role === 'ADMIN' ? <DashboardPage /> : <Navigate to="/participant/campaigns" replace />} />
+        <Route path="/campaigns" element={user?.role === 'ADMIN' ? <CampaignsPage /> : <Navigate to="/participant/campaigns" replace />} />
+        <Route path="/campaigns/create" element={user?.role === 'ADMIN' ? <CreateCampaignPage /> : <Navigate to="/participant/campaigns" replace />} />
+        <Route path="/campaigns/:id" element={user?.role === 'ADMIN' ? <CampaignDetailPage /> : <Navigate to="/participant/campaigns" replace />} />
+        <Route path="/campaigns/:id/edit" element={user?.role === 'ADMIN' ? <CampaignEditPage /> : <Navigate to="/participant/campaigns" replace />} />
+        <Route path="/campaigns/:id/participants" element={user?.role === 'ADMIN' ? <AdminPage /> : <Navigate to="/participant/campaigns" replace />} />
+        <Route path="/campaigns/:id/execute" element={user?.role === 'ADMIN' ? <CampaignExecutionPage /> : <Navigate to="/participant/campaigns" replace />} />
+        <Route path="/campaigns/:id/transactions" element={user?.role === 'ADMIN' ? <TransactionTablePage /> : <Navigate to="/participant/campaigns" replace />} />
         <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/admin" element={user?.role === 'ADMIN' ? <AdminPage /> : <Navigate to="/participant/campaigns" replace />} />
         <Route path="/participant" element={<ParticipantDashboardPage />} />
+        <Route path="/participant/campaigns" element={<ParticipantDashboardPage />} />
+        <Route path="/participant/campaigns/:campaignId" element={<ParticipantDashboardPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Layout>

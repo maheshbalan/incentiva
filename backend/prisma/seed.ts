@@ -248,6 +248,12 @@ class PremiumLineCampaign {
   // Create some sample participants
   const participants = [
     {
+      email: 'isabel.torres@goodyear.mx',
+      firstName: 'Isabel',
+      lastName: 'Torres',
+      role: UserRole.PARTICIPANT
+    },
+    {
       email: 'john.sales@company.com',
       firstName: 'John',
       lastName: 'Sales',
@@ -268,12 +274,15 @@ class PremiumLineCampaign {
   ]
 
   for (const participantData of participants) {
+    // Use exatatech password for Isabel, password123 for others
+    const password = participantData.email === 'isabel.torres@goodyear.mx' ? 'exatatech' : 'password123'
+    
     const participant = await prisma.user.upsert({
       where: { email: participantData.email },
       update: {},
       create: {
         email: participantData.email,
-        passwordHash: await bcrypt.hash('password123', 12),
+        passwordHash: await bcrypt.hash(password, 12),
         firstName: participantData.firstName,
         lastName: participantData.lastName,
         role: participantData.role,
@@ -324,8 +333,10 @@ class PremiumLineCampaign {
 
   console.log('🎉 Database seeding completed successfully!')
   console.log('📝 Login credentials:')
-  console.log('   Email: incentiva-admin@incentiva.com')
-  console.log('   Password: exatatech')
+  console.log('   Admin Email: incentiva-admin@incentiva.me')
+  console.log('   Admin Password: exatatech')
+  console.log('   Isabel Torres Email: isabel.torres@goodyear.mx')
+  console.log('   Isabel Torres Password: exatatech')
 }
 
 main()

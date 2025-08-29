@@ -60,15 +60,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     navigate('/login')
   }
 
-  const menuItems = [
-    { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard' },
-    { text: 'Campaigns', icon: <Campaign />, path: '/campaigns' },
-    ...(user?.role === 'ADMIN' ? [
+  const menuItems = user?.role === 'ADMIN'
+    ? [
+      { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard' },
+      { text: 'Campaigns', icon: <Campaign />, path: '/campaigns' },
       { text: 'Administration', icon: <Settings />, path: '/admin' },
-    ] : [
-      { text: 'My Dashboard', icon: <AccountBalance />, path: '/participant' },
-    ]),
-  ]
+    ]
+    : [
+      { text: 'My Campaigns', icon: <AccountBalance />, path: '/participant/campaigns' },
+    ]
 
   const drawer = (
     <div>
