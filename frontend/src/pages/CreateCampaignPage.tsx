@@ -58,13 +58,14 @@ const CreateCampaignPage: React.FC = () => {
     mode: 'onBlur'
   })
 
-  // Load TLP configuration from environment on component mount
-  useEffect(() => {
-    // Set TLP endpoint from environment variable (this would be loaded from backend)
-    setValue('tlpEndpointUrl', 'https://exata-customer.pravici.io')
-  }, [setValue])
+  // TLP endpoint is set in defaultValues, no need for useEffect
 
   const watchedValues = watch()
+
+  // Debug field values when they change
+  useEffect(() => {
+    console.log('Form values changed:', watchedValues)
+  }, [watchedValues])
 
   // Custom validation function
   const validateForm = (data: CampaignFormData): boolean => {
@@ -98,6 +99,7 @@ const CreateCampaignPage: React.FC = () => {
   const handleNext = () => {
     console.log('Moving to next step from:', activeStep)
     console.log('Form validation state:', { isValid, errors })
+    console.log('Current form values:', watchedValues)
     setActiveStep((prevStep) => prevStep + 1)
   }
 
@@ -875,9 +877,19 @@ const CreateCampaignPage: React.FC = () => {
                   <Typography variant="body2" sx={{ mb: 1 }}>
                     Endpoint: {watchedValues.tlpEndpointUrl}
                   </Typography>
-                  <Typography variant="body2">
+                  <Typography variant="body2" sx={{ mb: 1 }}>
                     API Key: {watchedValues.tlpApiKey ? '••••••••' : 'Not provided'}
                   </Typography>
+                  {watchedValues.campaignPointTypeName && (
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      Point Type Name: {watchedValues.campaignPointTypeName}
+                    </Typography>
+                  )}
+                  {watchedValues.pointValue && (
+                    <Typography variant="body2">
+                      Point Value: {watchedValues.pointValue} {watchedValues.campaignCurrency}
+                    </Typography>
+                  )}
 
                   <Divider sx={{ my: 2 }} />
 

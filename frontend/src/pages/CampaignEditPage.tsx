@@ -682,6 +682,16 @@ const CampaignEditPage: React.FC = () => {
         <Typography variant="body2" color="text.secondary" gutterBottom>
           <strong>TLP API Key:</strong> {campaign.tlpApiKey ? '***configured***' : 'Not configured'}
         </Typography>
+        {campaign.campaignPointTypeName && (
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            <strong>Point Type Name:</strong> {campaign.campaignPointTypeName}
+          </Typography>
+        )}
+        {campaign.pointValue && (
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            <strong>Point Value:</strong> {campaign.pointValue} {campaign.campaignCurrency || 'MXN'}
+          </Typography>
+        )}
       </Grid>
 
       <Grid item xs={12}>

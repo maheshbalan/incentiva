@@ -51,6 +51,8 @@ model Campaign {
   // TLP Configuration
   tlpApiKey      String?
   tlpEndpointUrl String?
+  campaignPointTypeName String? // Name for the TLP point type
+  pointValue     Decimal? @db.Decimal(10, 2) // Value of each point in campaign currency
 
   // Campaign Rules
   eligibilityCriteria String? // Natural language eligibility description
