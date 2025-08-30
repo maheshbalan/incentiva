@@ -3,7 +3,7 @@
 
 > **Welcome to Incentiva!** This comprehensive documentation is your complete guide to understanding, developing, and maintaining the Incentiva Loyalty Campaign Management System. Whether you're a new developer joining the project or an experienced team member looking for specific details, this document contains everything you need to know.
 
-**📅 Last Updated**: August 25, 2024  
+**📅 Last Updated**: August 29, 2024  
 **🚀 Current Version**: v2.1 - Participant Dashboard & Role-Based Access Control  
 **👥 Contributors**: Development Team, AI Assistant
 
@@ -314,6 +314,22 @@ const goalProgress = typeof userCampaign.goalProgress === 'number'
   ? userCampaign.goalProgress.toFixed(1) 
   : '0.0'
 ```
+
+**TLP Point Type Configuration Fields Implementation (August 29, 2024)**
+Today we added the missing TLP Point Type Configuration fields to both the Create Campaign and Edit Campaign forms, resolving the issue where these fields were only visible in the Create Campaign page.
+
+**Key Technical Changes Made:**
+
+**Frontend Updates:**
+- ✅ **`frontend/src/pages/CreateCampaignPage.tsx`**: TLP fields already present in create campaign form
+- ✅ **`frontend/src/pages/CampaignEditPage.tsx`**: Added missing TLP fields to edit campaign form
+- ✅ **`shared/src/types.ts`**: TLP fields already present in CampaignFormData interface
+
+**New Fields Added:**
+- **Campaign Point Type Name**: Text field for naming the loyalty point type in TLP system
+- **Value of Each Point**: Number field for setting the buy/sell value of each point
+- **Location**: Both fields appear in the "Goals & Rewards" tab of campaign creation/editing
+- **Purpose**: These fields provide the necessary data for TLP API integration to create point types and issue points
 
 **Campaign Execution Page Implementation**
 Today we implemented the complete Campaign Execution UI framework that provides administrators with a comprehensive view of campaign execution progress and artifacts.

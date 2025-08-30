@@ -623,6 +623,8 @@ export interface CampaignFormData {
   overallGoalBonus?: number
   totalPointsMinted?: number
   rewards?: string
+  campaignPointTypeName?: string
+  pointValue?: number
   databaseType?: string
   databaseHost?: string
   databasePort?: number

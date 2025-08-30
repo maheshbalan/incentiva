@@ -463,7 +463,20 @@ router.post('/retry-artifact/:artifactId', authenticateJWT, requireAdmin, async 
         retryResult = await tlpService.createPointType(artifact.campaign)
         break
       case 'POINT_ISSUE':
-        retryResult = await tlpService.mintCampaignPoints(artifact.campaign, 1000000)
+        // For point issue, we need to get the point type ID first
+        const pointTypeArtifact = await prisma.tLPArtifact.findFirst({
+          where: {
+            campaignId: artifact.campaign.id,
+            artifactType: 'POINT_TYPE',
+            status: 'SUCCESS'
+          }
+        })
+        if (pointTypeArtifact && pointTypeArtifact.response) {
+          const pointTypeId = JSON.parse(pointTypeArtifact.response).id
+          retryResult = await tlpService.issuePoints(artifact.campaign, pointTypeId)
+        } else {
+          throw new Error('Point type not found or not successful')
+        }
         break
       case 'MEMBER':
         // We need participant info for member creation

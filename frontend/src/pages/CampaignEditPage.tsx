@@ -383,6 +383,48 @@ const CampaignEditPage: React.FC = () => {
         />
       </Grid>
 
+      {/* TLP Point Type Configuration */}
+      <Grid item xs={12}>
+        <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1 }}>
+          TLP Point Type Configuration
+        </Typography>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <TextField
+          fullWidth
+          label="Campaign Point Type Name"
+          value={campaign.campaignPointTypeName || ''}
+          onChange={(e) => handleInputChange('campaignPointTypeName', e.target.value)}
+          error={!campaign.campaignPointTypeName}
+          helperText={!campaign.campaignPointTypeName ? 'Campaign point type name is required' : "Name for the loyalty point type in TLP system"}
+          placeholder="e.g., Goodyear Coins, Premium Line Points"
+        />
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <TextField
+          fullWidth
+          label="Value of Each Point"
+          type="number"
+          value={campaign.pointValue || ''}
+          onChange={(e) => handleInputChange('pointValue', parseFloat(e.target.value) || 0)}
+          inputProps={{ step: 0.01, min: 0.01 }}
+          error={!campaign.pointValue}
+          helperText={!campaign.pointValue ? 'Point value is required' : `Value of each point in ${campaign.campaignCurrency || 'MXN'}`}
+          placeholder="e.g., 1.00"
+        />
+      </Grid>
+
+      <Grid item xs={12}>
+        <Alert severity="info" sx={{ mt: 2 }}>
+          <Typography variant="body2">
+            <strong>TLP Point Type:</strong> This will create a new point type in the TLP system with the specified name and value. 
+            The point type will be used for all point allocations and redemptions in this campaign.
+          </Typography>
+        </Alert>
+      </Grid>
+
       <Grid item xs={12}>
         <Alert severity="info" sx={{ mt: 2 }}>
           <Typography variant="body2">

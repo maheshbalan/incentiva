@@ -645,6 +645,78 @@ router.post('/:id/approve', authenticateJWT, requireAdmin, async (req: Authentic
   }
 });
 
+// Generate TLP artifacts (Step 1 of campaign execution)
+router.post('/:id/execute/tlp-artifacts', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const campaign = await prisma.campaign.findUnique({
+      where: { id },
+      include: {
+        rules: true
+      }
+    });
+
+    if (!campaign) {
+      return res.status(404).json({
+        success: false,
+        error: 'Campaign not found'
+      });
+    }
+
+    if (campaign.status !== CampaignStatus.APPROVED) {
+      return res.status(400).json({
+        success: false,
+        error: 'Campaign must be approved before execution'
+      });
+    }
+
+    // Generate TLP artifacts using the service
+    const artifacts = await tlpService.generateTLPArtifacts(campaign);
+
+    // Store artifacts in database for tracking
+    const storedArtifacts = await Promise.all(
+      artifacts.map(artifact => 
+        prisma.tLPArtifact.create({
+          data: {
+            campaignId: campaign.id,
+            artifactType: artifact.artifactType,
+            artifactName: artifact.artifactName,
+            apiCall: artifact.apiCall,
+            response: artifact.response,
+            status: artifact.status,
+            errorDetails: artifact.errorDetails
+          }
+        })
+      )
+    );
+
+    logger.info('TLP artifacts generated', { 
+      campaignId: id, 
+      artifactsCount: artifacts.length,
+      successfulArtifacts: artifacts.filter(a => a.status === 'SUCCESS').length
+    });
+
+    res.json({
+      success: true,
+      data: {
+        artifacts: storedArtifacts,
+        summary: {
+          total: artifacts.length,
+          successful: artifacts.filter(a => a.status === 'SUCCESS').length,
+          failed: artifacts.filter(a => a.status === 'FAILED').length
+        }
+      }
+    });
+  } catch (error) {
+    logger.error('TLP artifact generation failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate TLP artifacts'
+    });
+  }
+});
+
 // Execute campaign (create TLP entities)
 router.post('/:id/execute', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {

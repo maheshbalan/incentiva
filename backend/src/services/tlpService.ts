@@ -70,25 +70,38 @@ export class TLPService {
     try {
       logger.info('Creating TLP point type', { campaignId: campaign.id, campaignName: campaign.name })
 
-      const pointTypeData = {
-        name: `${campaign.name}_Points`,
-        description: `Loyalty points for ${campaign.name} campaign`,
-        currency: campaign.campaignCurrency || 'MXN',
-        isActive: true,
-        metadata: {
-          campaignId: campaign.id,
-          campaignName: campaign.name,
-          amountPerPoint: campaign.amountPerPoint
-        }
+      // First, get the issuer account ID
+      const issuerResponse = await this.makeTLPRequest('/api/issuer', 'GET')
+      const accountId = issuerResponse.accountId
+
+      if (!accountId) {
+        throw new Error('Could not retrieve issuer account ID from TLP API')
       }
 
-      const response = await this.makeTLPRequest('/api/point-types', 'POST', pointTypeData)
+      const pointTypeData = {
+        name: campaign.campaignPointTypeName || `${campaign.name} Coins`,
+        enabled: true,
+        description: `Points that are awarded to team players in ${campaign.name} campaign.`,
+        rank: 100,
+        convert: {},
+        options: {
+          showZeroBalance: true
+        },
+        rate: {
+          buy: campaign.pointValue || 1,
+          sell: campaign.pointValue || 1,
+          currencyCode: campaign.campaignCurrency || 'MXN'
+        },
+        accountId: accountId
+      }
+
+      const response = await this.makeTLPRequest('/api/points', 'POST', pointTypeData)
 
       const artifactLog: TLPArtifactLog = {
         id: `pt_${Date.now()}`,
         campaignId: campaign.id,
         artifactType: 'POINT_TYPE',
-        artifactName: pointTypeData.name,
+        artifactName: campaign.campaignPointTypeName || `${campaign.name} Coins`,
         apiCall: JSON.stringify(pointTypeData, null, 2),
         response: JSON.stringify(response, null, 2),
         status: 'SUCCESS',
@@ -98,16 +111,21 @@ export class TLPService {
       logger.info('TLP point type created successfully', {
         campaignId: campaign.id,
         pointTypeId: response.id,
-        artifactLogId: artifactLog.id
+        pointTypeName: response.name
       })
 
       return artifactLog
     } catch (error: any) {
+      logger.error('Failed to create TLP point type', {
+        campaignId: campaign.id,
+        error: error.message
+      })
+
       const artifactLog: TLPArtifactLog = {
         id: `pt_${Date.now()}`,
         campaignId: campaign.id,
         artifactType: 'POINT_TYPE',
-        artifactName: `${campaign.name}_Points`,
+        artifactName: campaign.campaignPointTypeName || `${campaign.name} Coins`,
         apiCall: JSON.stringify({ campaignId: campaign.id, campaignName: campaign.name }, null, 2),
         response: '',
         status: 'FAILED',
@@ -115,77 +133,185 @@ export class TLPService {
         errorDetails: error.message
       }
 
-      logger.error('Failed to create TLP point type', {
-        campaignId: campaign.id,
-        error: error.message,
-        artifactLogId: artifactLog.id
-      })
-
       return artifactLog
     }
   }
 
   /**
-   * Mint points for a campaign
+   * Issue points to the campaign using TLP transactions/issue endpoint
    */
-  async mintCampaignPoints(campaign: any, totalPoints: number): Promise<TLPArtifactLog> {
+  async issuePoints(campaign: any, pointTypeId: string): Promise<TLPArtifactLog> {
     try {
-      logger.info('Minting campaign points', { 
+      logger.info('Issuing points for campaign', { 
         campaignId: campaign.id, 
-        campaignName: campaign.name, 
-        totalPoints 
+        campaignName: campaign.name,
+        totalPoints: campaign.totalPointsMinted 
       })
 
-      const mintData = {
-        pointTypeName: `${campaign.name}_Points`,
-        amount: totalPoints,
-        description: `Initial point mint for ${campaign.name} campaign`,
+      const issueData = {
+        pointTypeId: pointTypeId,
+        amount: campaign.totalPointsMinted || 0,
+        description: `Initial point issuance for ${campaign.name} campaign`,
         metadata: {
           campaignId: campaign.id,
           campaignName: campaign.name,
-          mintType: 'CAMPAIGN_INITIAL'
+          issuanceType: 'CAMPAIGN_INITIAL'
         }
       }
 
-      const response = await this.makeTLPRequest('/api/point-issues', 'POST', mintData)
+      const response = await this.makeTLPRequest('/api/transactions/issue', 'POST', issueData)
 
       const artifactLog: TLPArtifactLog = {
-        id: `pi_${Date.now()}`,
+        id: `issue_${Date.now()}`,
         campaignId: campaign.id,
         artifactType: 'POINT_ISSUE',
-        artifactName: `Mint_${campaign.name}_${totalPoints}pts`,
-        apiCall: JSON.stringify(mintData, null, 2),
+        artifactName: `Point Issue - ${campaign.totalPointsMinted} points`,
+        apiCall: JSON.stringify(issueData, null, 2),
         response: JSON.stringify(response, null, 2),
         status: 'SUCCESS',
         createdAt: new Date()
       }
 
-      logger.info('Campaign points minted successfully', {
+      logger.info('Points issued successfully', {
         campaignId: campaign.id,
-        pointIssueId: response.id,
-        totalPoints,
-        artifactLogId: artifactLog.id
+        pointTypeId: pointTypeId,
+        amount: campaign.totalPointsMinted
       })
 
       return artifactLog
     } catch (error: any) {
+      logger.error('Failed to issue points', {
+        campaignId: campaign.id,
+        error: error.message
+      })
+
       const artifactLog: TLPArtifactLog = {
-        id: `pi_${Date.now()}`,
+        id: `issue_${Date.now()}`,
         campaignId: campaign.id,
         artifactType: 'POINT_ISSUE',
-        artifactName: `Mint_${campaign.name}_${totalPoints}pts`,
-        apiCall: JSON.stringify({ campaignId: campaign.id, totalPoints }, null, 2),
+        artifactName: `Point Issue - ${campaign.totalPointsMinted} points`,
+        apiCall: JSON.stringify({ campaignId: campaign.id, totalPoints: campaign.totalPointsMinted }, null, 2),
         response: '',
         status: 'FAILED',
         createdAt: new Date(),
         errorDetails: error.message
       }
 
-      logger.error('Failed to mint campaign points', {
+      return artifactLog
+    }
+  }
+
+  /**
+   * Generate TLP artifacts for campaign execution (Step 1)
+   */
+  async generateTLPArtifacts(campaign: any): Promise<TLPArtifactLog[]> {
+    const artifacts: TLPArtifactLog[] = []
+    
+    try {
+      logger.info('Generating TLP artifacts for campaign', {
+        campaignId: campaign.id,
+        campaignName: campaign.name
+      })
+
+      // 1. Create point type
+      const pointTypeArtifact = await this.createPointType(campaign)
+      artifacts.push(pointTypeArtifact)
+
+      if (pointTypeArtifact.status === 'FAILED') {
+        throw new Error('Failed to create point type')
+      }
+
+      // 2. Issue campaign points
+      const pointTypeId = pointTypeArtifact.response ? JSON.parse(pointTypeArtifact.response).id : null
+      if (!pointTypeId) {
+        throw new Error('Could not retrieve point type ID from creation response')
+      }
+      
+      const issueArtifact = await this.issuePoints(campaign, pointTypeId)
+      artifacts.push(issueArtifact)
+
+      if (issueArtifact.status === 'FAILED') {
+        throw new Error('Failed to issue campaign points')
+      }
+
+      logger.info('TLP artifacts generated successfully', {
+        campaignId: campaign.id,
+        totalArtifacts: artifacts.length,
+        successfulArtifacts: artifacts.filter(a => a.status === 'SUCCESS').length
+      })
+
+      return artifacts
+    } catch (error: any) {
+      logger.error('Failed to generate TLP artifacts', {
         campaignId: campaign.id,
         error: error.message,
+        artifactsCreated: artifacts.length
+      })
+
+      return artifacts
+    }
+  }
+
+  /**
+   * Create a new member in TLP
+   */
+  async createMember(participant: any, campaign: any): Promise<TLPArtifactLog> {
+    try {
+      logger.info('Creating TLP member', { 
+        participantId: participant.id, 
+        campaignId: campaign.id 
+      })
+
+      const memberData = {
+        externalId: participant.id,
+        email: participant.email,
+        firstName: participant.firstName,
+        lastName: participant.lastName,
+        status: 'ACTIVE',
+        metadata: {
+          campaignId: campaign.id,
+          campaignName: campaign.name
+        }
+      }
+
+      const response = await this.makeTLPRequest('/api/members', 'POST', memberData)
+
+      const artifactLog: TLPArtifactLog = {
+        id: `mem_${Date.now()}`,
+        campaignId: campaign.id,
+        artifactType: 'MEMBER',
+        artifactName: `${participant.firstName} ${participant.lastName}`,
+        apiCall: JSON.stringify(memberData, null, 2),
+        response: JSON.stringify(response, null, 2),
+        status: 'SUCCESS',
+        createdAt: new Date()
+      }
+
+      logger.info('TLP member created successfully', {
+        participantId: participant.id,
+        memberId: response.id,
         artifactLogId: artifactLog.id
       })
+
+      return artifactLog
+    } catch (error: any) {
+      logger.error('Failed to create TLP member', {
+        participantId: participant.id,
+        campaignId: campaign.id,
+        error: error.message
+      })
+
+      const artifactLog: TLPArtifactLog = {
+        id: `mem_${Date.now()}`,
+        campaignId: campaign.id,
+        artifactType: 'MEMBER',
+        artifactName: `${participant.firstName} ${participant.lastName}`,
+        apiCall: JSON.stringify({ participantId: participant.id, campaignId: campaign.id }, null, 2),
+        response: '',
+        status: 'FAILED',
+        createdAt: new Date(),
+        errorDetails: error.message
+      }
 
       return artifactLog
     }
@@ -203,11 +329,18 @@ export class TLPService {
       })
 
       const offerData = {
-        name: `${campaign.name}_Individual_Goal_${participant.firstName}`,
+        name: `${campaign.name} Individual Goal Bonus`,
         description: `Bonus points for achieving individual goal in ${campaign.name}`,
-        pointTypeName: `${campaign.name}_Points`,
-        points: bonusPoints,
-        isActive: true,
+        pointTypeId: 'pt_placeholder', // This would come from the created point type
+        accrualRules: {
+          type: 'INDIVIDUAL_GOAL',
+          bonusPoints: bonusPoints,
+          conditions: {
+            goalType: 'INDIVIDUAL',
+            goalAmount: campaign.individualGoal
+          }
+        },
+        status: 'ACTIVE',
         metadata: {
           campaignId: campaign.id,
           participantId: participant.id,
@@ -218,10 +351,10 @@ export class TLPService {
       const response = await this.makeTLPRequest('/api/accrual-offers', 'POST', offerData)
 
       const artifactLog: TLPArtifactLog = {
-        id: `ao_${Date.now()}`,
+        id: `acc_${Date.now()}`,
         campaignId: campaign.id,
         artifactType: 'ACCRUAL_OFFER',
-        artifactName: offerData.name,
+        artifactName: `${campaign.name} Individual Goal Bonus`,
         apiCall: JSON.stringify(offerData, null, 2),
         response: JSON.stringify(response, null, 2),
         status: 'SUCCESS',
@@ -237,160 +370,23 @@ export class TLPService {
 
       return artifactLog
     } catch (error: any) {
-      const artifactLog: TLPArtifactLog = {
-        id: `ao_${Date.now()}`,
-        campaignId: campaign.id,
-        artifactType: 'ACCRUAL_OFFER',
-        artifactName: `${campaign.name}_Individual_Goal_${participant.firstName}`,
-        apiCall: JSON.stringify({ campaignId: campaign.id, participantId: participant.id, bonusPoints }, null, 2),
-        response: '',
-        status: 'FAILED',
-        createdAt: new Date(),
-        errorDetails: error.message
-      }
-
       logger.error('Failed to create individual goal accrual offer', {
         campaignId: campaign.id,
         participantId: participant.id,
-        error: error.message,
-        artifactLogId: artifactLog.id
+        error: error.message
       })
-
-      return artifactLog
-    }
-  }
-
-  /**
-   * Create accrual offer for overall goal achievement
-   */
-  async createOverallGoalAccrualOffer(campaign: any, participant: any, bonusPoints: number): Promise<TLPArtifactLog> {
-    try {
-      logger.info('Creating overall goal accrual offer', {
-        campaignId: campaign.id,
-        participantId: participant.id,
-        bonusPoints
-      })
-
-      const offerData = {
-        name: `${campaign.name}_Overall_Goal_${participant.firstName}`,
-        description: `Bonus points for overall campaign goal achievement in ${campaign.name}`,
-        pointTypeName: `${campaign.name}_Points`,
-        points: bonusPoints,
-        isActive: true,
-        metadata: {
-          campaignId: campaign.id,
-          participantId: participant.id,
-          offerType: 'OVERALL_GOAL_BONUS'
-        }
-      }
-
-      const response = await this.makeTLPRequest('/api/accrual-offers', 'POST', offerData)
 
       const artifactLog: TLPArtifactLog = {
-        id: `ao_${Date.now()}`,
+        id: `acc_${Date.now()}`,
         campaignId: campaign.id,
         artifactType: 'ACCRUAL_OFFER',
-        artifactName: offerData.name,
-        apiCall: JSON.stringify(offerData, null, 2),
-        response: JSON.stringify(response, null, 2),
-        status: 'SUCCESS',
-        createdAt: new Date()
-      }
-
-      logger.info('Overall goal accrual offer created successfully', {
-        campaignId: campaign.id,
-        participantId: participant.id,
-        offerId: response.id,
-        artifactLogId: artifactLog.id
-      })
-
-      return artifactLog
-    } catch (error: any) {
-      const artifactLog: TLPArtifactLog = {
-        id: `ao_${Date.now()}`,
-        campaignId: campaign.id,
-        artifactType: 'ACCRUAL_OFFER',
-        artifactName: `${campaign.name}_Overall_Goal_${participant.firstName}`,
+        artifactName: `${campaign.name} Individual Goal Bonus`,
         apiCall: JSON.stringify({ campaignId: campaign.id, participantId: participant.id, bonusPoints }, null, 2),
         response: '',
         status: 'FAILED',
         createdAt: new Date(),
         errorDetails: error.message
       }
-
-      logger.error('Failed to create overall goal accrual offer', {
-        campaignId: campaign.id,
-        participantId: participant.id,
-        error: error.message,
-        artifactLogId: artifactLog.id
-      })
-
-      return artifactLog
-    }
-  }
-
-  /**
-   * Create TLP member for participant
-   */
-  async createMember(participant: any, campaign: any): Promise<TLPArtifactLog> {
-    try {
-      logger.info('Creating TLP member', {
-        participantId: participant.id,
-        campaignId: campaign.id
-      })
-
-      const memberData = {
-        email: participant.email,
-        firstName: participant.firstName,
-        lastName: participant.lastName,
-        isActive: true,
-        metadata: {
-          participantId: participant.id,
-          campaignId: campaign.id,
-          campaignName: campaign.name
-        }
-      }
-
-      const response = await this.makeTLPRequest('/api/members', 'POST', memberData)
-
-      const artifactLog: TLPArtifactLog = {
-        id: `m_${Date.now()}`,
-        campaignId: campaign.id,
-        artifactType: 'MEMBER',
-        artifactName: `${participant.firstName}_${participant.lastName}`,
-        apiCall: JSON.stringify(memberData, null, 2),
-        response: JSON.stringify(response, null, 2),
-        status: 'SUCCESS',
-        createdAt: new Date()
-      }
-
-      logger.info('TLP member created successfully', {
-        participantId: participant.id,
-        campaignId: campaign.id,
-        memberId: response.id,
-        artifactLogId: artifactLog.id
-      })
-
-      return artifactLog
-    } catch (error: any) {
-      const artifactLog: TLPArtifactLog = {
-        id: `m_${Date.now()}`,
-        campaignId: campaign.id,
-        artifactType: 'MEMBER',
-        artifactName: `${participant.firstName}_${participant.lastName}`,
-        apiCall: JSON.stringify({ participantId: participant.id, campaignId: campaign.id }, null, 2),
-        response: '',
-        status: 'FAILED',
-        createdAt: new Date(),
-        errorDetails: error.message
-      }
-
-      logger.error('Failed to create TLP member', {
-        participantId: participant.id,
-        campaignId: campaign.id,
-        error: error.message,
-        artifactLogId: artifactLog.id
-      })
 
       return artifactLog
     }
@@ -411,11 +407,18 @@ export class TLPService {
       })
 
       const offerData = {
-        name: `${campaign.name}_Dynamic_${participant.firstName}_${Date.now()}`,
+        name: `${campaign.name} Dynamic ${participant.firstName} ${Date.now()}`,
         description: `Points earned for transaction of ${campaign.campaignCurrency} ${transactionAmount}`,
-        pointTypeName: `${campaign.name}_Points`,
-        points: pointsEarned,
-        isActive: true,
+        pointTypeId: 'pt_placeholder', // This would come from the created point type
+        accrualRules: {
+          type: 'TRANSACTION_ACCRUAL',
+          pointsEarned: pointsEarned,
+          conditions: {
+            transactionAmount: transactionAmount,
+            amountPerPoint: campaign.amountPerPoint
+          }
+        },
+        status: 'ACTIVE',
         metadata: {
           campaignId: campaign.id,
           participantId: participant.id,
@@ -448,11 +451,17 @@ export class TLPService {
 
       return artifactLog
     } catch (error: any) {
+      logger.error('Failed to create dynamic accrual offer', {
+        campaignId: campaign.id,
+        participantId: participant.id,
+        error: error.message
+      })
+
       const artifactLog: TLPArtifactLog = {
         id: `dao_${Date.now()}`,
         campaignId: campaign.id,
         artifactType: 'ACCRUAL_OFFER',
-        artifactName: `${campaign.name}_Dynamic_${participant.firstName}_${Date.now()}`,
+        artifactName: `${campaign.name} Dynamic ${participant.firstName} ${Date.now()}`,
         apiCall: JSON.stringify({ campaignId: campaign.id, participantId: participant.id, transactionAmount }, null, 2),
         response: '',
         status: 'FAILED',
@@ -460,12 +469,80 @@ export class TLPService {
         errorDetails: error.message
       }
 
-      logger.error('Failed to create dynamic accrual offer', {
+      return artifactLog
+    }
+  }
+
+  /**
+   * Create accrual offer for overall goal achievement
+   */
+  async createOverallGoalAccrualOffer(campaign: any, participant: any, bonusPoints: number): Promise<TLPArtifactLog> {
+    try {
+      logger.info('Creating overall goal accrual offer', {
         campaignId: campaign.id,
         participantId: participant.id,
-        error: error.message,
+        bonusPoints
+      })
+
+      const offerData = {
+        name: `${campaign.name} Overall Goal Bonus`,
+        description: `Bonus points for achieving overall campaign goal in ${campaign.name}`,
+        pointTypeId: 'pt_placeholder', // This would come from the created point type
+        accrualRules: {
+          type: 'OVERALL_GOAL',
+          bonusPoints: bonusPoints,
+          conditions: {
+            goalType: 'OVERALL',
+            goalAmount: campaign.overallGoal
+          }
+        },
+        status: 'ACTIVE',
+        metadata: {
+          campaignId: campaign.id,
+          participantId: participant.id,
+          offerType: 'OVERALL_GOAL_BONUS'
+        }
+      }
+
+      const response = await this.makeTLPRequest('/api/accrual-offers', 'POST', offerData)
+
+      const artifactLog: TLPArtifactLog = {
+        id: `acc_${Date.now()}`,
+        campaignId: campaign.id,
+        artifactType: 'ACCRUAL_OFFER',
+        artifactName: `${campaign.name} Overall Goal Bonus`,
+        apiCall: JSON.stringify(offerData, null, 2),
+        response: JSON.stringify(response, null, 2),
+        status: 'SUCCESS',
+        createdAt: new Date()
+      }
+
+      logger.info('Overall goal accrual offer created successfully', {
+        campaignId: campaign.id,
+        participantId: participant.id,
+        offerId: response.id,
         artifactLogId: artifactLog.id
       })
+
+      return artifactLog
+    } catch (error: any) {
+      logger.error('Failed to create overall goal accrual offer', {
+        campaignId: campaign.id,
+        participantId: participant.id,
+        error: error.message
+      })
+
+      const artifactLog: TLPArtifactLog = {
+        id: `acc_${Date.now()}`,
+        campaignId: campaign.id,
+        artifactType: 'ACCRUAL_OFFER',
+        artifactName: `${campaign.name} Overall Goal Bonus`,
+        apiCall: JSON.stringify({ campaignId: campaign.id, participantId: participant.id, bonusPoints }, null, 2),
+        response: '',
+        status: 'FAILED',
+        createdAt: new Date(),
+        errorDetails: error.message
+      }
 
       return artifactLog
     }
@@ -492,13 +569,17 @@ export class TLPService {
         throw new Error('Failed to create point type, aborting campaign setup')
       }
 
-      // 2. Mint campaign points
-      const totalPoints = campaign.totalPointsMinted || 1000000 // Default 1M points
-      const mintArtifact = await this.mintCampaignPoints(campaign, totalPoints)
-      artifacts.push(mintArtifact)
+      // 2. Issue campaign points
+      const pointTypeId = pointTypeArtifact.response ? JSON.parse(pointTypeArtifact.response).id : null
+      if (!pointTypeId) {
+        throw new Error('Could not retrieve point type ID from creation response')
+      }
+      
+      const issueArtifact = await this.issuePoints(campaign, pointTypeId)
+      artifacts.push(issueArtifact)
 
-      if (mintArtifact.status === 'FAILED') {
-        throw new Error('Failed to mint campaign points, aborting campaign setup')
+      if (issueArtifact.status === 'FAILED') {
+        throw new Error('Failed to issue campaign points, aborting campaign setup')
       }
 
       // 3. Create members for all participants

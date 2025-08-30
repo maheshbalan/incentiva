@@ -46,6 +46,8 @@ const CreateCampaignPage: React.FC = () => {
       overallGoalBonus: 0, // Default for overall goal bonus
       totalPointsMinted: 0, // Default for total points minted
       rewards: '', // Default for rewards description
+      campaignPointTypeName: '', // Default for campaign point type name
+      pointValue: 1, // Default point value
       databaseType: 'postgres', // Default for database type
       databaseHost: 'localhost', // Default for database host
       databasePort: 5432, // Default for database port
@@ -73,6 +75,11 @@ const CreateCampaignPage: React.FC = () => {
     
     // If TLP endpoint is provided, API key must also be provided
     if (data.tlpEndpointUrl && !data.tlpApiKey) {
+      return false
+    }
+    
+    // TLP point type configuration is required
+    if (!data.campaignPointTypeName || !data.pointValue) {
       return false
     }
     
@@ -480,7 +487,68 @@ const CreateCampaignPage: React.FC = () => {
                     placeholder="e.g., Gift cards, merchandise, discounts, exclusive experiences..."
                   />
                 )}
+                              />
+              </Grid>
+
+              {/* TEST LABEL - UNCONDITIONAL */}
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, color: 'red' }}>
+                  TEST: TLP Point Type Configuration Section
+                </Typography>
+              </Grid>
+
+              {/* TLP Point Type Configuration */}
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1 }}>
+                  TLP Point Type Configuration
+                </Typography>
+              </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="campaignPointTypeName"
+                control={control}
+                rules={{ required: 'Campaign point type name is required' }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Campaign Point Type Name"
+                    error={!!errors.campaignPointTypeName}
+                    helperText={errors.campaignPointTypeName?.message || "Name for the loyalty point type in TLP system"}
+                    placeholder="e.g., Goodyear Coins, Premium Line Points"
+                  />
+                )}
               />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="pointValue"
+                control={control}
+                rules={{ required: 'Point value is required', min: { value: 0.01, message: 'Must be greater than 0' } }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Value of Each Point"
+                    type="number"
+                    inputProps={{ step: 0.01, min: 0.01 }}
+                    error={!!errors.pointValue}
+                    helperText={errors.pointValue?.message || `Value of each point in ${watch('campaignCurrency') || 'MXN'}`}
+                    placeholder="e.g., 1.00"
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Alert severity="info" sx={{ mt: 2 }}>
+                <Typography variant="body2">
+                  <strong>TLP Point Type:</strong> This will create a new point type in the TLP system with the specified name and value. 
+                  The point type will be used for all point allocations and redemptions in this campaign.
+                </Typography>
+              </Alert>
             </Grid>
 
             <Grid item xs={12}>

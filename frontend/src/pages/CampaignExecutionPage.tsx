@@ -256,40 +256,59 @@ const CampaignExecutionPage: React.FC = () => {
   }
 
   const executeStep1 = async () => {
-    // Create TLP Point Type
-    const pointTypeArtifact: TLPArtifact = {
-      id: `pt_${Date.now()}`,
-      type: 'POINT_TYPE',
-      name: `${campaign?.name} Campaign Points`,
-      description: `Points earned through ${campaign?.name} campaign`,
-      apiCall: `POST /api/tlp/point-types\nBody: ${JSON.stringify({
-        name: `${campaign?.name} Campaign Points`,
-        description: `Points earned through ${campaign?.name} campaign`,
-        rank: 1,
-        enabled: true
-      }, null, 2)}`,
-      response: 'Success: Point type created with ID pt_12345',
-      status: 'SUCCESS',
-      createdAt: new Date().toISOString()
+    try {
+      // Call the real TLP artifacts generation endpoint
+      const response = await authService.api.post(`/campaigns/${campaign?.id}/execute/tlp-artifacts`)
+      
+      if (response.data.success) {
+        const { artifacts, summary } = response.data.data
+        
+        // Convert the backend artifacts to frontend format
+        const frontendArtifacts: TLPArtifact[] = artifacts.map((artifact: any) => ({
+          id: artifact.id,
+          type: artifact.artifactType,
+          name: artifact.artifactName,
+          description: `TLP ${artifact.artifactType.toLowerCase().replace('_', ' ')}`,
+          apiCall: artifact.apiCall,
+          response: artifact.response,
+          status: artifact.status,
+          createdAt: artifact.createdAt
+        }))
+        
+        setTlpArtifacts(frontendArtifacts)
+        
+        // Update step status
+        setStepStatus(prev => ({
+          ...prev,
+          0: summary.failed > 0 ? 'FAILED' : 'COMPLETED'
+        }))
+        
+        // Add execution logs
+        setLogs(prev => [
+          ...prev,
+          `Step 1 completed: ${summary.successful}/${summary.total} artifacts created successfully`
+        ])
+      } else {
+        throw new Error(response.data.error || 'Failed to generate TLP artifacts')
+      }
+    } catch (error: any) {
+      console.error('Error executing step 1:', error)
+      
+      // Update step status to failed
+      setStepStatus(prev => ({
+        ...prev,
+        0: 'FAILED'
+      }))
+      
+      // Add error to logs
+      setLogs(prev => [
+        ...prev,
+        `Step 1 failed: ${error.message}`
+      ])
+      
+      // Set error state
+      setError(error.message)
     }
-
-    // Create Point Issue
-    const pointIssueArtifact: TLPArtifact = {
-      id: `pi_${Date.now()}`,
-      type: 'POINT_ISSUE',
-      name: `${campaign?.name} Point Issue`,
-      description: `Issuing ${campaign?.totalPointsMinted} points for campaign`,
-      apiCall: `POST /api/tlp/point-issues\nBody: ${JSON.stringify({
-        pointTypeId: 'pt_12345',
-        amount: campaign?.totalPointsMinted,
-        description: `${campaign?.name} campaign points`
-      }, null, 2)}`,
-      response: 'Success: Point issue created with ID pi_67890',
-      status: 'SUCCESS',
-      createdAt: new Date().toISOString()
-    }
-
-    setTlpArtifacts(prev => [...prev, pointTypeArtifact, pointIssueArtifact])
   }
 
   const executeStep2 = async () => {
